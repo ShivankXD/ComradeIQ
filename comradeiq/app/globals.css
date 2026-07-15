@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0a0a0a;
+  --foreground: #d4d8d5;
+  --hud-line: #1a2e2a;
+  --grid-cell: 48px;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/*
+ * Graph-paper backdrop shared by both zones. The cell origin is anchored to the
+ * viewport so the squares stay continuous across the zone seam.
+ */
+.zone-grid {
+  background-color: var(--background);
+  background-image:
+    linear-gradient(var(--hud-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--hud-line) 1px, transparent 1px);
+  background-size: var(--grid-cell) var(--grid-cell);
+  background-attachment: fixed;
+}
+
+/* Zone B: same grid, receded so the canvas above stays dominant. */
+.zone-grid-dim {
+  opacity: 0.4;
+}
+
+@keyframes commander-flow {
+  to {
+    stroke-dashoffset: -30;
+  }
+}
+
+.commander-gradient-edge {
+  stroke-dasharray: 8 7;
+  animation: commander-flow 1.25s linear infinite;
+}
+
+@keyframes commander-idle {
+  0%, 100% { filter: drop-shadow(0 0 13px rgba(255, 45, 45, 0.35)); }
+  50% { filter: drop-shadow(0 0 26px rgba(255, 45, 45, 0.78)); }
+}
+
+@keyframes comrade-breathe {
+  0%, 100% { box-shadow: 0 0 18px rgba(45, 107, 255, 0.24), inset 0 0 16px rgba(45, 107, 255, 0.1); }
+  50% { box-shadow: 0 0 30px rgba(45, 107, 255, 0.58), inset 0 0 22px rgba(45, 107, 255, 0.2); }
+}
+
+.commander-idle-pulse { animation: commander-idle 3.8s ease-in-out infinite; }
+.comrade-breathe { animation: comrade-breathe 3.4s ease-in-out infinite; }

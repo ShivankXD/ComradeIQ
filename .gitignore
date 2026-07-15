@@ -216,3 +216,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Claude Code
+.claude/
+
+# Cloudflare / wrangler
+.wrangler/
+.dev.vars
+
+# ComradeIQ generated presentation output
+.comradeiq-presentations/
