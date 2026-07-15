@@ -9,6 +9,7 @@ export default function Home() {
   const isMissionActive = useCommanderStore((state) => state.isMissionActive);
   const commanderName = useCommanderStore((state) => state.name);
   const setCommanderName = useCommanderStore((state) => state.setCommanderName);
+  const replayMissionId = useCommanderStore((state) => state.replayMissionId);
 
   return (
     <main className="flex h-screen flex-col overflow-hidden bg-[#0a0a0a]">
@@ -18,6 +19,14 @@ export default function Home() {
           <p className="shrink-0 text-[10px] tracking-[0.28em] text-red-300/70">COMRADEIQ // AI COMMAND CENTER</p>
           <span className="shrink-0 text-slate-700">|</span>
           <p className="shrink-0 text-[10px] tracking-[0.16em] text-slate-300">{isMissionActive ? "MISSION TOPOLOGY" : "MISSION SETUP"}</p>
+          {replayMissionId && (
+            <span
+              data-replay-badge
+              className="shrink-0 rounded-sm border border-amber-300/50 bg-amber-300/10 px-1.5 py-0.5 text-[9px] tracking-[0.18em] text-amber-200"
+            >
+              ▶ REPLAY
+            </span>
+          )}
         </div>
         <div className="flex shrink-0 items-center gap-3">
           <label className="sr-only" htmlFor="commander-name">Commander designation</label>

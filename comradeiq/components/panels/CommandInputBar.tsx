@@ -4,9 +4,23 @@ import { AnimatePresence, motion } from "framer-motion";
 import { FormEvent, KeyboardEvent, useState } from "react";
 
 import { launchMission } from "@/lib/agents/mission-client";
+import { patchMission, saveMission } from "@/lib/history/db";
+import { flushEvents } from "@/lib/history/recorder";
+import { cancelReplay, replayMission } from "@/lib/history/replay";
+import { useMissionHistory } from "@/lib/history/use-mission-history";
 import { useCommanderStore, type CommanderStatus } from "@/lib/store";
 
 const IN_FLIGHT: CommanderStatus[] = ["thinking", "dispatching", "delegating", "synthesizing"];
+
+/** Chip status dot — mirrors the Commander status colours used on the canvas. */
+const STATUS_DOT: Record<string, string> = {
+  complete: "bg-emerald-400",
+  error: "bg-rose-400",
+  thinking: "bg-violet-400",
+  dispatching: "bg-[#ff2d2d]",
+  delegating: "bg-cyan-400",
+  synthesizing: "bg-amber-400",
+};
 
 // The stored designation already carries the "Commander" title (e.g. "Commander
 // Atlas"), so it is interpolated as-is rather than re-prefixed.
@@ -32,15 +46,15 @@ export function CommandInputBar() {
   const missionType = useCommanderStore((state) => state.missionType);
   const status = useCommanderStore((state) => state.status);
   const missionId = useCommanderStore((state) => state.missionId);
-  const missionHistory = useCommanderStore((state) => state.missionHistory);
-  const recordMission = useCommanderStore((state) => state.recordMission);
-  const setObjective = useCommanderStore((state) => state.setObjective);
-  const setMissionId = useCommanderStore((state) => state.setMissionId);
+  const replayMissionId = useCommanderStore((state) => state.replayMissionId);
+  const { missions, refresh } = useMissionHistory();
   const [draft, setDraft] = useState("");
   const [focused, setFocused] = useState(false);
 
   const busy = IN_FLIGHT.includes(status);
-  const inlineStatus = statusLabel(status, commanderName);
+  const inlineStatus = replayMissionId
+    ? "Replaying a cached mission — no agents are running."
+    : statusLabel(status, commanderName);
 
   async function handleSubmit(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
@@ -48,15 +62,30 @@ export function CommandInputBar() {
     if (!mission || busy) return;
 
     setDraft("");
+    cancelReplay();
+
+    // Written before dispatch so a tab closed mid-mission still leaves a
+    // replayable row behind.
+    const id = crypto.randomUUID();
+    await saveMission({
+      id,
+      commanderName,
+      missionText: mission,
+      status: "thinking",
+      createdAt: Date.now(),
+    });
+    refresh();
+
     try {
-      await launchMission(commanderName, mission, missionType);
+      await launchMission(commanderName, mission, missionType, id);
     } catch (error) {
       console.error("Mission launch failed", error);
+      // A launch that fails before dispatch emits no realtime event, so the
+      // row would otherwise sit at 'thinking' forever.
+      await patchMission(id, { status: "error", completedAt: Date.now() });
     } finally {
-      // launchMission assigns the id before dispatching, so a failed mission is
-      // still chipped — the topology keeps its error state for inspection.
-      const launchedId = useCommanderStore.getState().missionId;
-      if (launchedId) recordMission({ id: launchedId, objective: mission, at: Date.now() });
+      await flushEvents();
+      refresh();
     }
   }
 
@@ -67,31 +96,34 @@ export function CommandInputBar() {
     }
   }
 
-  function replayMission(id: string, objective: string) {
-    setMissionId(id);
-    setObjective(objective);
+  function handleChipClick(id: string) {
+    if (busy) return;
+    void replayMission(id).catch((error) => console.error("Replay failed", error));
   }
 
   return (
     <div className="relative flex h-full flex-col justify-center px-4 pb-3 pt-2">
       <div className="mx-auto w-full max-w-3xl">
-        {missionHistory.length > 0 && (
+        {missions.length > 0 && (
           <div className="mb-2 flex items-center gap-2 overflow-x-auto pb-1">
             <span className="shrink-0 font-mono text-[9px] tracking-[0.18em] text-slate-500">PAST MISSIONS</span>
-            {missionHistory.map((past) => (
+            {missions.map((past) => (
               <button
                 key={past.id}
                 type="button"
-                onClick={() => replayMission(past.id, past.objective)}
-                title={past.objective}
-                className={`shrink-0 truncate rounded-full border px-3 py-1 font-mono text-[9px] tracking-[0.08em] transition ${
+                onClick={() => handleChipClick(past.id)}
+                disabled={busy}
+                title={past.missionText}
+                data-mission-chip={past.id}
+                className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 font-mono text-[9px] tracking-[0.08em] transition disabled:cursor-not-allowed disabled:opacity-40 ${
                   past.id === missionId
                     ? "border-[#ff2d2d]/50 bg-[#ff2d2d]/10 text-red-100"
                     : "border-slate-400/20 bg-black/30 text-slate-400 hover:border-[#2d6bff]/40 hover:text-blue-200"
                 }`}
-                style={{ maxWidth: "13rem" }}
               >
-                {past.objective}
+                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${STATUS_DOT[past.status] ?? "bg-slate-500"}`} />
+                <span className="max-w-[11rem] truncate">{past.missionText}</span>
+                {past.id === replayMissionId && <span className="shrink-0 text-[8px] text-red-200/80">▶</span>}
               </button>
             ))}
           </div>
@@ -134,11 +166,11 @@ export function CommandInputBar() {
           <AnimatePresence mode="wait">
             {inlineStatus && (
               <motion.p
-                key={status}
+                key={inlineStatus}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className={`font-mono text-[9px] tracking-[0.14em] ${status === "error" ? "text-rose-300/80" : "text-slate-500"}`}
+                className={`font-mono text-[9px] tracking-[0.14em] ${status === "error" && !replayMissionId ? "text-rose-300/80" : "text-slate-500"}`}
               >
                 {inlineStatus}
               </motion.p>

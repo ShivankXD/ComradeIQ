@@ -217,6 +217,10 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
+# The Python packaging rule `lib/` near the top of this file matches at any
+# depth, which silently swallowed the Next.js app's source directory. Keep it.
+!comradeiq/lib/
+
 # Claude Code
 .claude/
 
