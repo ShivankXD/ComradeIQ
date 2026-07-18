@@ -1,6 +1,6 @@
 "use client";
 
-import { useCommanderStore, type BusMessage } from "@/lib/store";
+import { useCommanderStore, type BusMessage, type MissionType } from "@/lib/store";
 
 const pause = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
@@ -20,8 +20,14 @@ function deckFor(objective: string) {
   };
 }
 
+function generalResultFor(objective: string, useInternet?: boolean) {
+  if (/^(hi|hello|hey)[!. ]*$/i.test(objective.trim())) return "Hi! I’m Commander Atlas. Give me a goal—write a README, plan a launch, explain a concept, or build a presentation—and I’ll coordinate the right response.";
+  if (/\b(readme|github readme)\b/i.test(objective)) return `# Project README\n\n## Overview\n${objective}\n\n## Getting started\n\n\`\`\`bash\nnpm install\nnpm run dev\n\`\`\`\n\n## What it does\n\n- Clearly describes the project’s purpose\n- Guides contributors through local setup\n- Leaves room for architecture, API, and deployment details\n\n## Next steps\n\nReplace this starter content with your project-specific installation, configuration, and usage instructions.`;
+  return `## Mission response\n\nI’ve prepared a focused starting point for: **${objective}**\n\n- Clarify the intended audience and success criterion.\n- Break the work into a small, testable first deliverable.\n- Review the result against the goal and iterate from feedback.\n\n${useInternet ? "Internet research was requested. Add an API key to let the live Commander source current information." : "Enable **Use internet** when you need current external research."}`;
+}
+
 /** A polished offline demonstration path. The real path remains the server-side OpenAI Commander. */
-export async function runLocalMissionDemo(missionId: string, commanderName: string, objective: string) {
+export async function runLocalMissionDemo(missionId: string, commanderName: string, objective: string, missionType: MissionType, useInternet?: boolean) {
   const store = useCommanderStore.getState();
   store.appendThinking("I’m framing the mission, identifying the useful workstreams, and convening the council.");
   post(missionId, "commander", "team", `${commanderName} is convening the council around the mission.`);
@@ -54,7 +60,8 @@ export async function runLocalMissionDemo(missionId: string, commanderName: stri
   store.setStatus("synthesizing");
   store.appendThinking("The council’s reports agree on a concise, audience-first direction. I’m resolving the final sequence now.");
   await pause(700);
-  store.setFinalResult(JSON.stringify(deckFor(objective), null, 2));
-  post(missionId, "commander", "user", "The council has completed its presentation plan. Connect an OpenAI key to generate the production deck.", "result");
+  const finalResult = missionType === "presentation" ? JSON.stringify(deckFor(objective), null, 2) : generalResultFor(objective, useInternet);
+  store.setFinalResult(finalResult);
+  post(missionId, "commander", "user", "The council has assembled a response. Connect an OpenAI key for live model output.", "result");
   store.setStatus("complete");
 }

@@ -3,7 +3,7 @@ import { create } from "zustand";
 export type CommanderStatus = "idle" | "thinking" | "dispatching" | "delegating" | "monitoring" | "synthesizing" | "complete" | "error";
 export type ComradeStatus = "idle" | "thinking" | "working" | "done" | "disconnected";
 export type BusMessageKind = "mission" | "status" | "result" | "conflict" | "system";
-export type MissionType = "presentation";
+export type MissionType = "presentation" | "general";
 
 export interface ComradeState {
   id: string;
@@ -75,7 +75,7 @@ export type CommanderStore = CommanderState & CommanderActions;
 const initialState: CommanderState = {
   name: "Commander Atlas",
   isMissionActive: false,
-  missionType: "presentation",
+  missionType: "general",
   objective: "",
   status: "idle",
   thinking: [],

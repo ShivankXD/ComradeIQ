@@ -33,8 +33,9 @@ export function applyMissionEvent(name: string, data: unknown) {
       break;
     }
     case "mission.result": {
-      const payload = data as { finalJson: unknown; presentationUrl: string };
-      store.setFinalResult(JSON.stringify(payload.finalJson, null, 2));
+      const payload = data as { finalJson?: unknown; finalResult?: string; presentationUrl?: string };
+      if (payload.finalResult) store.setFinalResult(payload.finalResult);
+      if (payload.finalJson) store.setFinalResult(JSON.stringify(payload.finalJson, null, 2));
       store.setPresentationUrl(payload.presentationUrl);
       break;
     }

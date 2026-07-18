@@ -13,9 +13,11 @@ export async function POST(request: Request) {
       missionText?: string;
       missionType?: MissionType;
       connectedComrades?: ConnectedComrade[];
+      useInternet?: boolean;
+      attachmentContext?: string[];
     };
 
-    if (!body.missionId || !body.commanderName?.trim() || !body.missionText?.trim() || body.missionType !== "presentation" || !Array.isArray(body.connectedComrades)) {
+    if (!body.missionId || !body.commanderName?.trim() || !body.missionText?.trim() || !["presentation", "general"].includes(body.missionType ?? "") || !Array.isArray(body.connectedComrades)) {
       return NextResponse.json({ error: "A mission id, Commander name, mission objective, and operational Comrades are required." }, { status: 400 });
     }
 
@@ -23,11 +25,13 @@ export async function POST(request: Request) {
       missionId: body.missionId,
       commanderName: body.commanderName.trim(),
       missionText: body.missionText.trim(),
-      missionType: body.missionType,
+      missionType: body.missionType as MissionType,
       connectedComrades: body.connectedComrades,
+      useInternet: Boolean(body.useInternet),
+      attachmentContext: body.attachmentContext?.filter((item) => typeof item === "string").slice(0, 3) ?? [],
     });
 
-    return NextResponse.json({ started: true, missionId: body.missionId, finalJson: result.finalJson, presentationUrl: result.presentationUrl });
+    return NextResponse.json({ started: true, missionId: body.missionId, finalJson: result.finalJson, finalResult: result.finalResult, presentationUrl: result.presentationUrl });
   } catch (error) {
     console.error("Commander mission failed", error);
     return NextResponse.json({ error: error instanceof Error ? error.message : "The Commander could not start the mission." }, { status: 500 });

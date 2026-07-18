@@ -28,8 +28,8 @@ export default function Home() {
   }
 
   return (
-    <main className="flex h-screen overflow-hidden bg-[#1d1f1f] text-[#ececec]">
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-white/[0.08] bg-[#151717] p-3 md:flex">
+    <main className="flex h-screen overflow-hidden bg-[#050806] text-[#ececec]">
+      {objective && <aside className="hidden w-64 shrink-0 flex-col border-r border-white/[0.08] bg-[#151717] p-3 md:flex">
         <div className="flex items-center gap-2 px-2 py-2">
           <div className="grid h-7 w-7 place-items-center rounded-lg bg-[#10a37f] text-xs font-bold text-white">C</div>
           <span className="text-sm font-semibold tracking-tight">ComradeIQ</span>
@@ -49,15 +49,15 @@ export default function Home() {
           <label className="text-[11px] text-[#888891]" htmlFor="commander-name">Commander</label>
           <input id="commander-name" value={commanderName} onChange={(event) => setCommanderName(event.target.value)} className="mt-1 w-full bg-transparent text-sm text-[#d9d9df] outline-none placeholder:text-[#666]" />
         </div>
-      </aside>
+      </aside>}
 
-      <section className="flex min-w-0 flex-1 flex-col bg-[#1d1f1f]">
+      <section className={`flex min-w-0 flex-1 flex-col ${objective ? "bg-[#1d1f1f]" : "bg-[#050806]"}`}>
         <header className="flex h-14 shrink-0 items-center border-b border-white/[0.08] px-4 md:hidden">
           <div className="grid h-7 w-7 place-items-center rounded-lg bg-[#10a37f] text-xs font-bold text-white">C</div>
           <span className="ml-2 text-sm font-semibold">ComradeIQ</span>
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto"><MissionConversation /></div>
-        <div className="shrink-0 border-t border-white/[0.08] bg-[#1d1f1f] px-4 pb-4 pt-3"><CommandInputBar /></div>
+        <div className={`shrink-0 border-t border-white/[0.08] px-4 pb-4 pt-3 ${objective ? "bg-[#1d1f1f]" : "bg-[#050806]"}`}><CommandInputBar /></div>
       </section>
 
       {objective && <div className="hidden w-80 shrink-0 xl:block"><MissionActivityPanel onOpenTeamMap={() => setTeamMapOpen(true)} /></div>}

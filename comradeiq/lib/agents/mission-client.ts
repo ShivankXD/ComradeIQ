@@ -9,6 +9,7 @@ export async function launchMission(
   missionType: MissionType,
   // Supplied by the caller so the history row exists before the mission runs.
   missionId: string = crypto.randomUUID(),
+  options: { useInternet?: boolean; attachmentContext?: string[] } = {},
 ) {
   const store = useCommanderStore.getState();
   const connectedComrades = Object.values(store.comrades)
@@ -29,17 +30,17 @@ export async function launchMission(
   const response = await fetch("/api/mission", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ missionId, commanderName, missionText, missionType, connectedComrades }),
+    body: JSON.stringify({ missionId, commanderName, missionText, missionType, connectedComrades, ...options }),
   });
 
-  const payload = await response.json().catch(() => null) as { error?: string; finalJson?: unknown; presentationUrl?: string } | null;
+  const payload = await response.json().catch(() => null) as { error?: string; finalJson?: unknown; finalResult?: string; presentationUrl?: string } | null;
   if (!response.ok) {
     const message = payload?.error ?? "The Commander could not start the mission.";
     // Keep the prototype valuable immediately after cloning. A configured
     // server always takes the real OpenAI/Ably route; missing credentials get
     // a clearly contained, local demonstration of the same command-room flow.
     if (/OPENAI_API_KEY|ABLY_API_KEY|not configured/i.test(message)) {
-      await runLocalMissionDemo(missionId, commanderName, missionText);
+      await runLocalMissionDemo(missionId, commanderName, missionText, missionType, options.useInternet);
       return;
     }
     useCommanderStore.getState().setStatus("error");
@@ -47,5 +48,6 @@ export async function launchMission(
   }
 
   if (payload?.finalJson) useCommanderStore.getState().setFinalResult(JSON.stringify(payload.finalJson, null, 2));
+  if (payload?.finalResult) useCommanderStore.getState().setFinalResult(payload.finalResult);
   if (payload?.presentationUrl) useCommanderStore.getState().setPresentationUrl(payload.presentationUrl);
 }

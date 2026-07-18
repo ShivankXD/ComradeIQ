@@ -33,11 +33,14 @@ interface StartMissionInput {
   missionText: string;
   missionType: MissionType;
   connectedComrades: ConnectedComrade[];
+  useInternet: boolean;
+  attachmentContext: string[];
 }
 
 interface StartMissionResult {
   dispatches: DispatchOrder[];
   finalJson?: PresentationJson;
+  finalResult?: string;
   presentationUrl?: string;
 }
 
@@ -89,6 +92,21 @@ async function synthesizePresentation(
   return presentation;
 }
 
+async function synthesizeGeneralMission(
+  client: OpenAI,
+  missionText: string,
+  reports: Awaited<ReturnType<typeof runComrade>>[],
+  useInternet: boolean,
+) {
+  const synthesis = await client.responses.create({
+    model: "gpt-5.6-terra",
+    instructions: `You are the Assembler Comrade delivering the final result to the user. Fulfil the user's request directly and use concise Markdown when it improves usability. For a greeting, reply naturally and briefly. For a README request, return a complete, practical README in Markdown. Do not mention hidden reasoning, the internal team, or that you are an AI. ${useInternet ? "Web research was enabled: use the provided research material only when it materially improves accuracy." : "Do not claim to have searched the internet."}`,
+    input: `User request: ${missionText}\n\nSpecialist reports:\n${JSON.stringify(reports)}`,
+    ...(useInternet ? { tools: [{ type: "web_search" as const }] } : {}),
+  });
+  return synthesis.output_text.trim() || "The team completed the request, but returned no final text.";
+}
+
 /** Foundation for the Commander: turns a mission plan into independent briefs. */
 export function createMissionBriefs(
   objective: string,
@@ -106,7 +124,7 @@ export function createMissionBriefs(
  * Runs only on the server. Thinking updates and dispatches are published to the
  * mission's Ably channel, keeping provider credentials out of the browser.
  */
-export async function startMission({ missionId, commanderName, missionText, missionType, connectedComrades }: StartMissionInput): Promise<StartMissionResult> {
+export async function startMission({ missionId, commanderName, missionText, missionType, connectedComrades, useInternet, attachmentContext }: StartMissionInput): Promise<StartMissionResult> {
   if (!process.env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured.");
   if (!connectedComrades.length) throw new Error("No operational Comrades are available for dispatch.");
 
@@ -119,7 +137,7 @@ export async function startMission({ missionId, commanderName, missionText, miss
     model: "gpt-5.6-terra",
     stream: true,
     instructions: `${COMMANDER_SYSTEM_PROMPT}\n\nFirst, provide concise, user-visible numbered planning notes about the mission objective only. This is a high-level planning trace, not private chain-of-thought. Do not discuss individual Comrades, assign work, or write the final deliverable.`,
-    input: `Commander: ${commanderName}\nMission objective: ${missionText}`,
+    input: `Commander: ${commanderName}\nMission objective: ${missionText}\nReference material: ${attachmentContext.join("\n---\n") || "None"}`,
   });
 
   for await (const event of thinkingStream) {
@@ -137,7 +155,7 @@ export async function startMission({ missionId, commanderName, missionText, miss
   const planResponse = await client.responses.create({
     model: "gpt-5.6-terra",
     instructions: `${COMMANDER_SYSTEM_PROMPT}\n\nCreate a dispatch plan for the mission. Call dispatch_plan exactly once. Include exactly one specific written order for every provided operational Comrade, using its exact id and role. The plan array's order is the dispatch order. Do not produce final mission content.\n\n${missionType === "presentation" ? presentationDispatchRequirements() : ""}`,
-    input: `Mission objective: ${missionText}\nOperational Comrades: ${JSON.stringify(availableComrades)}`,
+    input: `Mission objective: ${missionText}\nReference material: ${attachmentContext.join("\n---\n") || "None"}\nInternet research: ${useInternet ? "enabled" : "disabled"}\nOperational Comrades: ${JSON.stringify(availableComrades)}`,
     tools: [{
       type: "function",
       name: "dispatch_plan",
@@ -223,6 +241,13 @@ export async function startMission({ missionId, commanderName, missionText, miss
     return { dispatches, finalJson, presentationUrl };
   }
 
+  await publishMissionEvent(channel, "commander.status", { status: "synthesizing" });
+  const finalResult = await synthesizeGeneralMission(client, missionText, comradeReports, useInternet);
+  await publishMissionEvent(channel, "mission.result", { finalResult });
+  await publishMissionEvent(channel, "bus.message", {
+    id: `${missionId}:commander:general-ready`, kind: "result", from: "commander", to: "user",
+    content: "The Commander has assembled the final response.", timestamp: Date.now(), missionId,
+  } satisfies BusMessage);
   await publishMissionEvent(channel, "commander.status", { status: "complete" });
-  return { dispatches };
+  return { dispatches, finalResult };
 }
