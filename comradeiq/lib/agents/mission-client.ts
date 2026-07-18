@@ -1,6 +1,7 @@
 "use client";
 
 import { useCommanderStore, type MissionType } from "@/lib/store";
+import { runLocalMissionDemo } from "./local-demo";
 
 export async function launchMission(
   commanderName: string,
@@ -33,8 +34,16 @@ export async function launchMission(
 
   const payload = await response.json().catch(() => null) as { error?: string; finalJson?: unknown; presentationUrl?: string } | null;
   if (!response.ok) {
+    const message = payload?.error ?? "The Commander could not start the mission.";
+    // Keep the prototype valuable immediately after cloning. A configured
+    // server always takes the real OpenAI/Ably route; missing credentials get
+    // a clearly contained, local demonstration of the same command-room flow.
+    if (/OPENAI_API_KEY|ABLY_API_KEY|not configured/i.test(message)) {
+      await runLocalMissionDemo(missionId, commanderName, missionText);
+      return;
+    }
     useCommanderStore.getState().setStatus("error");
-    throw new Error(payload?.error ?? "The Commander could not start the mission.");
+    throw new Error(message);
   }
 
   if (payload?.finalJson) useCommanderStore.getState().setFinalResult(JSON.stringify(payload.finalJson, null, 2));

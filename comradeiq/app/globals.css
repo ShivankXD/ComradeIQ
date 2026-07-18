@@ -1,10 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0a0a;
-  --foreground: #d4d8d5;
-  --hud-line: #1a2e2a;
-  --grid-cell: 48px;
+  --background: #1d1f1f;
+  --foreground: #edf1ef;
 }
 
 @theme inline {
@@ -22,28 +20,20 @@ body {
 
 body {
   margin: 0;
-  background: var(--background);
+  background:
+    radial-gradient(circle at 52% -20%, rgba(29, 160, 129, 0.08), transparent 32rem),
+    var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-/*
- * Graph-paper backdrop shared by both zones. The cell origin is anchored to the
- * viewport so the squares stay continuous across the zone seam.
- */
-.zone-grid {
-  background-color: var(--background);
-  background-image:
-    linear-gradient(var(--hud-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--hud-line) 1px, transparent 1px);
-  background-size: var(--grid-cell) var(--grid-cell);
-  background-attachment: fixed;
-}
-
-/* Zone B: same grid, receded so the canvas above stays dominant. */
-.zone-grid-dim {
-  opacity: 0.4;
-}
+* { box-sizing: border-box; }
+::selection { background: rgba(78, 224, 164, 0.3); color: #fff; }
+* { scrollbar-width: thin; scrollbar-color: #4e5653 transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: 99px; background: #4e5653; background-clip: padding-box; }
 
 @keyframes commander-flow {
   to {

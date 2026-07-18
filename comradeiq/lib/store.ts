@@ -77,13 +77,13 @@ const initialState: CommanderState = {
   isMissionActive: false,
   missionType: "presentation",
   objective: "",
-  status: "monitoring",
+  status: "idle",
   thinking: [],
   comrades: {
-    researcher: { id: "researcher", name: "RESEARCHER", specialty: "intelligence", status: "thinking", connected: true, progress: 34 },
-    writer: { id: "writer", name: "WRITER", specialty: "narrative", status: "working", connected: true, progress: 61 },
+    researcher: { id: "researcher", name: "RESEARCHER", specialty: "intelligence", status: "idle", connected: true, progress: 0 },
+    writer: { id: "writer", name: "WRITER", specialty: "narrative", status: "idle", connected: true, progress: 0 },
     formatter: { id: "formatter", name: "FORMATTER", specialty: "presentation", status: "idle", connected: true, progress: 0 },
-    critic: { id: "critic", name: "CRITIC", specialty: "quality control", status: "done", connected: true, progress: 100 },
+    critic: { id: "critic", name: "CRITIC", specialty: "quality control", status: "idle", connected: true, progress: 0 },
     assembler: { id: "assembler", name: "ASSEMBLER", specialty: "synthesis", status: "idle", connected: true, progress: 0 },
   },
   busMessages: [],
@@ -161,6 +161,9 @@ export const useCommanderStore = create<CommanderStore>((set) => ({
   // Clears everything a mission draws on the canvas, without touching the
   // Comrade connect/disconnect topology the user has set up.
   resetMissionView: () => set((state) => ({
+    missionId: undefined,
+    isMissionActive: false,
+    objective: "",
     thinking: [],
     busMessages: [],
     finalResult: undefined,
