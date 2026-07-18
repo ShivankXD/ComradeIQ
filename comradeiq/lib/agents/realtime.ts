@@ -11,6 +11,7 @@ function getAblyRest() {
 }
 
 export async function publishMissionEvent(channelName: string, eventName: string, data: unknown) {
+  if (!process.env.ABLY_API_KEY) return;
   await getAblyRest().channels.get(channelName).publish(eventName, data);
 }
 

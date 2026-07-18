@@ -1,7 +1,6 @@
 "use client";
 
 import { useCommanderStore, type MissionType } from "@/lib/store";
-import { runLocalMissionDemo } from "./local-demo";
 
 export async function launchMission(
   commanderName: string,
@@ -24,6 +23,8 @@ export async function launchMission(
   store.clearComradeActivity();
   store.setFinalResult(undefined);
   store.setPresentationUrl(undefined);
+  store.setError(undefined);
+  store.setRuntimeMode("unknown");
   store.setStatus("thinking");
   store.setMissionActive(true);
 
@@ -33,21 +34,20 @@ export async function launchMission(
     body: JSON.stringify({ missionId, commanderName, missionText, missionType, connectedComrades, ...options }),
   });
 
-  const payload = await response.json().catch(() => null) as { error?: string; finalJson?: unknown; finalResult?: string; presentationUrl?: string } | null;
+  const payload = await response.json().catch(() => null) as { error?: string; finalJson?: unknown; finalResult?: string; presentationUrl?: string; mode?: "live" | "demo" } | null;
   if (!response.ok) {
     const message = payload?.error ?? "The Commander could not start the mission.";
-    // Keep the prototype valuable immediately after cloning. A configured
-    // server always takes the real OpenAI/Ably route; missing credentials get
-    // a clearly contained, local demonstration of the same command-room flow.
-    if (/OPENAI_API_KEY|ABLY_API_KEY|not configured/i.test(message)) {
-      await runLocalMissionDemo(missionId, commanderName, missionText, missionType, options.useInternet);
-      return;
-    }
-    useCommanderStore.getState().setStatus("error");
+    const current = useCommanderStore.getState();
+    current.setError(message);
+    current.setRuntimeMode("unavailable");
+    current.setStatus("error");
     throw new Error(message);
   }
 
-  if (payload?.finalJson) useCommanderStore.getState().setFinalResult(JSON.stringify(payload.finalJson, null, 2));
-  if (payload?.finalResult) useCommanderStore.getState().setFinalResult(payload.finalResult);
-  if (payload?.presentationUrl) useCommanderStore.getState().setPresentationUrl(payload.presentationUrl);
+  const current = useCommanderStore.getState();
+  current.setRuntimeMode(payload?.mode ?? "live");
+  if (payload?.finalJson) current.setFinalResult(JSON.stringify(payload.finalJson, null, 2));
+  if (payload?.finalResult) current.setFinalResult(payload.finalResult);
+  if (payload?.presentationUrl) current.setPresentationUrl(payload.presentationUrl);
+  current.setStatus("complete");
 }

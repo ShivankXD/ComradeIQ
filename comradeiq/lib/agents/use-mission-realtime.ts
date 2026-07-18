@@ -14,16 +14,23 @@ const TERMINAL: CommanderStatus[] = ["complete", "error"];
 export function useMissionRealtime(missionId?: string) {
   useEffect(() => {
     if (!missionId) return;
+    const activeMissionId = missionId;
 
-    const realtime = new Ably.Realtime({ authUrl: `/api/ably/token?missionId=${encodeURIComponent(missionId)}` });
-    const channel = realtime.channels.get(`mission:${missionId}`);
-    channel.subscribe((message) => {
+    let realtime: Ably.Realtime | undefined;
+    let disposed = false;
+
+    async function connect() {
+      const readiness = await fetch("/api/health/ai").then((response) => response.json() as Promise<{ realtimeEnabled?: boolean }>).catch(() => null);
+      if (disposed || !readiness?.realtimeEnabled) return;
+      realtime = new Ably.Realtime({ authUrl: `/api/ably/token?missionId=${encodeURIComponent(activeMissionId)}` });
+      const channel = realtime.channels.get(`mission:${activeMissionId}`);
+      channel.subscribe((message) => {
       if (!message.name) return;
 
       // Render first, then persist — the canvas must never wait on IndexedDB.
       applyMissionEvent(message.name, message.data);
       recordEvent({
-        missionId,
+        missionId: activeMissionId,
         name: message.name,
         data: message.data,
         eventType: classifyEvent(message.name, message.data),
@@ -33,20 +40,22 @@ export function useMissionRealtime(missionId?: string) {
       // Keep the history chip's status dot in step with the live mission.
       if (message.name === "commander.status") {
         const status = (message.data as { status: CommanderStatus }).status;
-        void patchMission(missionId, {
+        void patchMission(activeMissionId, {
           status,
           ...(TERMINAL.includes(status) ? { completedAt: Date.now() } : {}),
         });
       }
       if (message.name === "mission.result") {
         const { presentationUrl } = message.data as { presentationUrl: string };
-        void patchMission(missionId, { resultUrl: presentationUrl });
+        void patchMission(activeMissionId, { resultUrl: presentationUrl });
       }
-    });
+      });
+    }
+    void connect();
 
     return () => {
-      channel.unsubscribe();
-      realtime.close();
+      disposed = true;
+      realtime?.close();
     };
   }, [missionId]);
 }

@@ -43,6 +43,7 @@ export interface CommanderState {
   finalResult?: string;
   presentationUrl?: string;
   error?: string;
+  runtimeMode: "live" | "demo" | "unavailable" | "unknown";
 }
 
 interface CommanderActions {
@@ -64,6 +65,8 @@ interface CommanderActions {
   postMessage: (message: BusMessage) => void;
   setFinalResult: (result?: string) => void;
   setPresentationUrl: (presentationUrl?: string) => void;
+  setError: (error?: string) => void;
+  setRuntimeMode: (runtimeMode: CommanderState["runtimeMode"]) => void;
   beginReplay: (missionId: string) => void;
   endReplay: () => void;
   resetMissionView: () => void;
@@ -87,6 +90,7 @@ const initialState: CommanderState = {
     assembler: { id: "assembler", name: "ASSEMBLER", specialty: "synthesis", status: "idle", connected: true, progress: 0 },
   },
   busMessages: [],
+  runtimeMode: "unknown",
 };
 
 export const useCommanderStore = create<CommanderStore>((set) => ({
@@ -156,6 +160,8 @@ export const useCommanderStore = create<CommanderStore>((set) => ({
   })),
   setFinalResult: (finalResult) => set({ finalResult }),
   setPresentationUrl: (presentationUrl) => set({ presentationUrl }),
+  setError: (error) => set({ error }),
+  setRuntimeMode: (runtimeMode) => set({ runtimeMode }),
   beginReplay: (replayMissionId) => set({ replayMissionId }),
   endReplay: () => set({ replayMissionId: undefined }),
   // Clears everything a mission draws on the canvas, without touching the
@@ -168,6 +174,8 @@ export const useCommanderStore = create<CommanderStore>((set) => ({
     busMessages: [],
     finalResult: undefined,
     presentationUrl: undefined,
+    error: undefined,
+    runtimeMode: "unknown",
     status: "monitoring",
     comrades: Object.fromEntries(Object.entries(state.comrades).map(([id, comrade]) => [
       id,

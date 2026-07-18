@@ -31,7 +31,7 @@ export async function POST(request: Request) {
       attachmentContext: body.attachmentContext?.filter((item) => typeof item === "string").slice(0, 3) ?? [],
     });
 
-    return NextResponse.json({ started: true, missionId: body.missionId, finalJson: result.finalJson, finalResult: result.finalResult, presentationUrl: result.presentationUrl });
+    return NextResponse.json({ started: true, mode: "live", missionId: body.missionId, finalJson: result.finalJson, finalResult: result.finalResult, presentationUrl: result.presentationUrl });
   } catch (error) {
     console.error("Commander mission failed", error);
     return NextResponse.json({ error: error instanceof Error ? error.message : "The Commander could not start the mission." }, { status: 500 });

@@ -4,6 +4,7 @@ import type { ComradeStatus } from "@/lib/store";
 import type { MissionType } from "@/lib/store";
 
 import { missionChannelName, publishMissionEvent } from "./realtime";
+import { OPENAI_MODEL } from "./model";
 
 export type ComradeRole = "researcher" | "writer" | "formatter" | "critic" | "assembler";
 
@@ -14,6 +15,7 @@ export interface ComradeOrder {
   order: string;
   commanderName: string;
   missionType: MissionType;
+  useInternet?: boolean;
 }
 
 export interface ComradeResult {
@@ -80,7 +82,7 @@ export async function runComrade(input: ComradeOrder): Promise<ComradeResult> {
   await publishStatus(input, "thinking");
 
   const thinkingStream = await client.responses.create({
-    model: "gpt-5.6-terra",
+    model: OPENAI_MODEL,
     stream: true,
     instructions: `${systemPrompt(input.role, input.commanderName)}\n\nProvide short, display-safe planning notes about this order only. Do not mention any original mission or other Comrades' private reasoning.`,
     input: `Commander order: ${input.order}`,
@@ -95,7 +97,21 @@ export async function runComrade(input: ComradeOrder): Promise<ComradeResult> {
   await publishStatus(input, "working");
 
   let output = "";
-  if (input.role === "researcher") {
+  if (input.role === "researcher" && input.useInternet) {
+    const researchStream = await client.responses.create({
+      model: OPENAI_MODEL,
+      stream: true,
+      tools: [{ type: "web_search" }],
+      instructions: `${systemPrompt(input.role, input.commanderName)}\n\nResearch the Commander order using current web sources. Return a concise, source-aware research brief that the Commander can use.`,
+      input: `Commander order: ${input.order}`,
+    });
+    for await (const event of researchStream) {
+      if (event.type === "response.output_text.delta") {
+        output += event.delta;
+        await publishMissionEvent(channel, "comrade.output.delta", { comradeId: input.comradeId, token: event.delta });
+      }
+    }
+  } else if (input.role === "researcher") {
     output = JSON.stringify({
       research_brief: `Search-flavored research stub for: ${input.order}`,
       per_slide_image_queries: [
@@ -106,7 +122,7 @@ export async function runComrade(input: ComradeOrder): Promise<ComradeResult> {
     await streamText(channel, "comrade.output.delta", output, input.comradeId);
   } else {
     const outputStream = await client.responses.create({
-      model: "gpt-5.6-terra",
+      model: OPENAI_MODEL,
       stream: true,
       instructions: `${systemPrompt(input.role, input.commanderName)}\n\n${outputInstruction(input.role, input.missionType)}`,
       input: `Commander order: ${input.order}`,

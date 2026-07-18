@@ -6,6 +6,7 @@ import type { BusMessage, ComradeState, MissionType } from "@/lib/store";
 import { runComrade, type ComradeRole } from "./comrade";
 import { buildPresentation, sanitizePresentation, type PresentationJson } from "./presentation";
 import { missionChannelName, publishMissionEvent } from "./realtime";
+import { OPENAI_MODEL } from "./model";
 
 const COMMANDER_SYSTEM_PROMPT = `You are the Commander. You only reason about the user's objective and how to decompose it. You never write final content yourself. You never reference what individual Comrades are thinking.`;
 
@@ -48,13 +49,30 @@ function presentationDispatchRequirements() {
   return `This is a presentation mission. Include these role-specific orders: researcher finds image queries per proposed slide; writer drafts slide content by section; formatter structures material as { slides: [{ title, bullets, imageQuery }] }; critic flags slide-density or sequence issues only when source material is supplied by Commander; assembler finalizes slide order and transitions.`;
 }
 
+function isDirectConversation(message: string) {
+  const normalized = message.trim().toLowerCase();
+  return /^(hi|hello|hey|thanks|thank you)[!. ]*$/.test(normalized)
+    || /^(what|which|who|when|where|why|how)\b/.test(normalized)
+    || normalized.length < 48;
+}
+
+async function answerDirectly(client: OpenAI, message: string, useInternet: boolean, references: string[]) {
+  const response = await client.responses.create({
+    model: OPENAI_MODEL,
+    instructions: "You are Commander Atlas, a helpful AI assistant. Give a direct, accurate answer to the user. Be concise for casual conversation. Use Markdown only when it makes the answer easier to use. Never claim to have performed work you did not perform.",
+    input: `User message: ${message}\n\nAttached reference text:\n${references.join("\n---\n") || "None"}`,
+    ...(useInternet ? { tools: [{ type: "web_search" as const }] } : {}),
+  });
+  return response.output_text.trim() || "I wasn’t able to produce a response for that request.";
+}
+
 async function synthesizePresentation(
   client: OpenAI,
   missionText: string,
   comradeReports: Awaited<ReturnType<typeof runComrade>>[],
 ) {
   const synthesis = await client.responses.create({
-    model: "gpt-5.6-terra",
+    model: OPENAI_MODEL,
     instructions: `You are the Commander performing presentation synthesis. Resolve conflicts among the reports, especially titles or bullets that are too long for a slide. Produce only a coherent audience-facing presentation JSON. Each slide must have a concise takeaway title, no more than five brief bullets, one image query, and a simple transition name.`,
     input: `Mission objective: ${missionText}\nComrade reports:\n${JSON.stringify(comradeReports)}`,
     text: {
@@ -99,7 +117,7 @@ async function synthesizeGeneralMission(
   useInternet: boolean,
 ) {
   const synthesis = await client.responses.create({
-    model: "gpt-5.6-terra",
+    model: OPENAI_MODEL,
     instructions: `You are the Assembler Comrade delivering the final result to the user. Fulfil the user's request directly and use concise Markdown when it improves usability. For a greeting, reply naturally and briefly. For a README request, return a complete, practical README in Markdown. Do not mention hidden reasoning, the internal team, or that you are an AI. ${useInternet ? "Web research was enabled: use the provided research material only when it materially improves accuracy." : "Do not claim to have searched the internet."}`,
     input: `User request: ${missionText}\n\nSpecialist reports:\n${JSON.stringify(reports)}`,
     ...(useInternet ? { tools: [{ type: "web_search" as const }] } : {}),
@@ -125,7 +143,7 @@ export function createMissionBriefs(
  * mission's Ably channel, keeping provider credentials out of the browser.
  */
 export async function startMission({ missionId, commanderName, missionText, missionType, connectedComrades, useInternet, attachmentContext }: StartMissionInput): Promise<StartMissionResult> {
-  if (!process.env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured.");
+  if (!process.env.OPENAI_API_KEY) throw new Error("Live AI is not configured. Add OPENAI_API_KEY to .env.local and restart the app.");
   if (!connectedComrades.length) throw new Error("No operational Comrades are available for dispatch.");
 
   const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -133,8 +151,15 @@ export async function startMission({ missionId, commanderName, missionText, miss
 
   await publishMissionEvent(channel, "commander.status", { status: "thinking" });
 
+  if (missionType === "general" && isDirectConversation(missionText)) {
+    const finalResult = await answerDirectly(client, missionText, useInternet, attachmentContext);
+    await publishMissionEvent(channel, "mission.result", { finalResult });
+    await publishMissionEvent(channel, "commander.status", { status: "complete" });
+    return { dispatches: [], finalResult };
+  }
+
   const thinkingStream = await client.responses.create({
-    model: "gpt-5.6-terra",
+    model: OPENAI_MODEL,
     stream: true,
     instructions: `${COMMANDER_SYSTEM_PROMPT}\n\nFirst, provide concise, user-visible numbered planning notes about the mission objective only. This is a high-level planning trace, not private chain-of-thought. Do not discuss individual Comrades, assign work, or write the final deliverable.`,
     input: `Commander: ${commanderName}\nMission objective: ${missionText}\nReference material: ${attachmentContext.join("\n---\n") || "None"}`,
@@ -153,7 +178,7 @@ export async function startMission({ missionId, commanderName, missionText, miss
     role: comrade.role,
   }));
   const planResponse = await client.responses.create({
-    model: "gpt-5.6-terra",
+    model: OPENAI_MODEL,
     instructions: `${COMMANDER_SYSTEM_PROMPT}\n\nCreate a dispatch plan for the mission. Call dispatch_plan exactly once. Include exactly one specific written order for every provided operational Comrade, using its exact id and role. The plan array's order is the dispatch order. Do not produce final mission content.\n\n${missionType === "presentation" ? presentationDispatchRequirements() : ""}`,
     input: `Mission objective: ${missionText}\nReference material: ${attachmentContext.join("\n---\n") || "None"}\nInternet research: ${useInternet ? "enabled" : "disabled"}\nOperational Comrades: ${JSON.stringify(availableComrades)}`,
     tools: [{
@@ -220,6 +245,7 @@ export async function startMission({ missionId, commanderName, missionText, miss
     order: dispatch.order,
     commanderName,
     missionType,
+    useInternet,
   })));
 
   if (missionType === "presentation") {
