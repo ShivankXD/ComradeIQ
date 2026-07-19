@@ -27,6 +27,24 @@ function createSessionId() {
   return randomBytes(32).toString("base64url");
 }
 
+function isLoopbackHost(hostname: string) {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1" || hostname === "[::1]";
+}
+
+/**
+ * Next's development server can construct `request.url` with `localhost` even
+ * when the browser is connected through a loopback IP address. Treat those
+ * loopback aliases as one local origin while developing, but keep production
+ * origin validation exact.
+ */
+function isDevelopmentLoopbackAlias(origin: URL, requestUrl: URL) {
+  return process.env.NODE_ENV === "development"
+    && origin.protocol === requestUrl.protocol
+    && origin.port === requestUrl.port
+    && isLoopbackHost(origin.hostname)
+    && isLoopbackHost(requestUrl.hostname);
+}
+
 export function getAnonymousSession(request: Request, create = false): AnonymousSession | undefined {
   const candidate = parseCookie(request.headers.get("cookie"), SESSION_COOKIE);
   if (candidate && SESSION_PATTERN.test(candidate)) return { id: candidate, isNew: false };
@@ -51,7 +69,9 @@ export function assertSameOrigin(request: Request) {
   const origin = request.headers.get("origin");
   if (!origin) return;
   try {
-    if (new URL(origin).origin !== new URL(request.url).origin) {
+    const originUrl = new URL(origin);
+    const requestUrl = new URL(request.url);
+    if (originUrl.origin !== requestUrl.origin && !isDevelopmentLoopbackAlias(originUrl, requestUrl)) {
       throw new RuntimeError("forbidden", "This request must originate from ComradeIQ.", { status: 403 });
     }
   } catch (error) {
