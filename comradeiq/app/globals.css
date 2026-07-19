@@ -1,8 +1,9 @@
 @import "tailwindcss";
 
 :root {
-  --background: #1d1f1f;
-  --foreground: #edf1ef;
+  --background: #202422;
+  --foreground: #edf2ef;
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -15,13 +16,13 @@
 html,
 body {
   height: 100%;
-  overflow: hidden;
+  margin: 0;
 }
 
 body {
-  margin: 0;
+  overflow: hidden;
   background:
-    radial-gradient(circle at 52% -20%, rgba(29, 160, 129, 0.08), transparent 32rem),
+    radial-gradient(circle at 55% -20%, rgba(28, 151, 120, 0.09), transparent 34rem),
     var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
@@ -29,32 +30,58 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-* { box-sizing: border-box; }
-::selection { background: rgba(78, 224, 164, 0.3); color: #fff; }
-* { scrollbar-width: thin; scrollbar-color: #4e5653 transparent; }
-*::-webkit-scrollbar { width: 8px; height: 8px; }
-*::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: 99px; background: #4e5653; background-clip: padding-box; }
+* {
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: #58635d transparent;
+}
 
-@keyframes commander-flow {
-  to {
-    stroke-dashoffset: -30;
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: #58635d;
+  background-clip: padding-box;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button:not(:disabled) {
+  cursor: pointer;
+}
+
+::selection {
+  background: rgba(92, 218, 182, 0.32);
+  color: #fff;
+}
+
+/* Keep keyboard navigation apparent even where utility classes remove outlines. */
+:focus-visible {
+  outline: 2px solid #8ce8cb;
+  outline-offset: 3px;
+}
+
+dialog,
+[role="dialog"] {
+  overscroll-behavior: contain;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
-
-.commander-gradient-edge {
-  stroke-dasharray: 8 7;
-  animation: commander-flow 1.25s linear infinite;
-}
-
-@keyframes commander-idle {
-  0%, 100% { filter: drop-shadow(0 0 13px rgba(255, 45, 45, 0.35)); }
-  50% { filter: drop-shadow(0 0 26px rgba(255, 45, 45, 0.78)); }
-}
-
-@keyframes comrade-breathe {
-  0%, 100% { box-shadow: 0 0 18px rgba(45, 107, 255, 0.24), inset 0 0 16px rgba(45, 107, 255, 0.1); }
-  50% { box-shadow: 0 0 30px rgba(45, 107, 255, 0.58), inset 0 0 22px rgba(45, 107, 255, 0.2); }
-}
-
-.commander-idle-pulse { animation: commander-idle 3.8s ease-in-out infinite; }
-.comrade-breathe { animation: comrade-breathe 3.4s ease-in-out infinite; }

@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ComradeIQ // AI Command Center",
-  description: "Commander and Comrade mission topology.",
+  title: "ComradeIQ — AI Mission Control",
+  description: "A conversation-first AI mission control for coordinated research, artifacts, and presentations.",
 };
 
 export default function RootLayout({

@@ -1,8 +1,70 @@
 "use client";
 
 import type { MissionEventType } from "@/lib/history/db";
-import type { BusMessage, CommanderStatus } from "@/lib/store";
+import type { BusMessage, CommanderStatus, MissionArtifact, MissionSource } from "@/lib/store";
 import { useCommanderStore } from "@/lib/store";
+
+const commanderStatuses: CommanderStatus[] = ["idle", "thinking", "dispatching", "delegating", "monitoring", "synthesizing", "complete", "cancelled", "error"];
+
+function isCommanderStatus(value: unknown): value is CommanderStatus {
+  return typeof value === "string" && commanderStatuses.includes(value as CommanderStatus);
+}
+
+function safeUrl(value: unknown) {
+  if (typeof value !== "string") return undefined;
+  try {
+    const url = new URL(value, typeof window === "undefined" ? "http://localhost" : window.location.origin);
+    return ["http:", "https:"].includes(url.protocol) ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function asSources(value: unknown): MissionSource[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value.flatMap((candidate) => {
+    if (!candidate || typeof candidate !== "object") return [];
+    const source = candidate as { title?: unknown; url?: unknown };
+    const url = safeUrl(source.url);
+    if (typeof source.title !== "string" || !url) return [];
+    return [{ title: source.title.slice(0, 280), url }];
+  });
+}
+
+function asArtifacts(value: unknown): MissionArtifact[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value.flatMap((candidate) => {
+    if (!candidate || typeof candidate !== "object") return [];
+    const artifact = candidate as Partial<MissionArtifact>;
+    const url = safeUrl(artifact.url);
+    if (!url || (artifact.kind !== "markdown" && artifact.kind !== "presentation") || typeof artifact.id !== "string" || typeof artifact.filename !== "string" || typeof artifact.contentType !== "string" || typeof artifact.size !== "number") return [];
+    return [{ id: artifact.id, kind: artifact.kind, filename: artifact.filename, contentType: artifact.contentType, size: artifact.size, url }];
+  });
+}
+
+function setResultJson(value: unknown) {
+  try {
+    useCommanderStore.getState().setFinalResult(JSON.stringify(value, null, 2));
+  } catch {
+    useCommanderStore.getState().setFinalResult("The mission returned an unreadable structured result.");
+  }
+}
+
+function applyPublicResult(payload: { finalJson?: unknown; finalResult?: unknown; presentationUrl?: unknown; artifacts?: unknown; sources?: unknown }) {
+  const store = useCommanderStore.getState();
+  if (typeof payload.finalResult === "string") store.setFinalResult(payload.finalResult);
+  if (payload.finalJson !== undefined) setResultJson(payload.finalJson);
+  const sources = asSources(payload.sources);
+  if (sources) store.setSources(sources);
+  const artifacts = asArtifacts(payload.artifacts);
+  if (artifacts) {
+    store.setArtifacts(artifacts);
+    const presentation = artifacts.find((artifact) => artifact.kind === "presentation");
+    if (presentation) store.setPresentationUrl(presentation.url);
+  }
+  const presentationUrl = safeUrl(payload.presentationUrl);
+  if (presentationUrl) store.setPresentationUrl(presentationUrl);
+}
 
 /**
  * The single place a mission event is turned into store state.
@@ -33,18 +95,50 @@ export function applyMissionEvent(name: string, data: unknown) {
       break;
     }
     case "mission.result": {
-      const payload = data as { finalJson?: unknown; finalResult?: string; presentationUrl?: string };
-      if (payload.finalResult) store.setFinalResult(payload.finalResult);
-      if (payload.finalJson) store.setFinalResult(JSON.stringify(payload.finalJson, null, 2));
-      store.setPresentationUrl(payload.presentationUrl);
+      applyPublicResult(data as { finalJson?: unknown; finalResult?: unknown; presentationUrl?: unknown; artifacts?: unknown; sources?: unknown });
       break;
     }
     case "bus.message":
       store.postMessage(data as BusMessage);
       break;
-    case "commander.status":
-      store.setStatus((data as { status: CommanderStatus }).status);
+    case "commander.status": {
+      const status = (data as { status?: unknown }).status;
+      if (isCommanderStatus(status)) {
+        store.setStatus(status);
+        if (["complete", "cancelled", "error"].includes(status)) store.setMissionActive(false);
+      }
       break;
+    }
+    case "mission.state": {
+      const payload = data as {
+        status?: unknown;
+        state?: unknown;
+        mission?: { status?: unknown; finalJson?: unknown; finalResult?: unknown; presentationUrl?: unknown; artifacts?: unknown; sources?: unknown; lastError?: { message?: unknown } };
+      };
+      const status = payload.status ?? payload.state ?? payload.mission?.status;
+      if (isCommanderStatus(status)) {
+        store.setStatus(status);
+        if (["complete", "cancelled", "error"].includes(status)) store.setMissionActive(false);
+      }
+      if (payload.mission) {
+        applyPublicResult(payload.mission);
+        const message = payload.mission.lastError?.message;
+        if (typeof message === "string" && message.trim()) store.setError(message);
+      }
+      break;
+    }
+    case "mission.error": {
+      const payload = data as { code?: unknown; message?: unknown };
+      const message = typeof payload.message === "string" && payload.message.trim() ? payload.message : "The mission could not be completed.";
+      store.setError(message);
+      if (payload.code === "cancelled") {
+        store.setStatus("cancelled");
+      } else {
+        store.setStatus("error");
+      }
+      store.setMissionActive(false);
+      break;
+    }
   }
 }
 
@@ -61,8 +155,10 @@ export function classifyEvent(name: string, data: unknown): MissionEventType {
       return "report";
     case "comrade.status":
     case "commander.status":
+    case "mission.state":
       return "status";
     case "mission.result":
+    case "mission.error":
       return "report";
     case "bus.message": {
       const kind = (data as BusMessage | undefined)?.kind;

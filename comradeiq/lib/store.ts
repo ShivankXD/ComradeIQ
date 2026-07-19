@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type CommanderStatus = "idle" | "thinking" | "dispatching" | "delegating" | "monitoring" | "synthesizing" | "complete" | "error";
+export type CommanderStatus = "idle" | "thinking" | "dispatching" | "delegating" | "monitoring" | "synthesizing" | "complete" | "cancelled" | "error";
 export type ComradeStatus = "idle" | "thinking" | "working" | "done" | "disconnected";
 export type BusMessageKind = "mission" | "status" | "result" | "conflict" | "system";
 export type MissionType = "presentation" | "general";
@@ -28,6 +28,22 @@ export interface BusMessage {
   missionId?: string;
 }
 
+/** Safe, public provenance supplied by the mission runtime. */
+export interface MissionSource {
+  title: string;
+  url: string;
+}
+
+/** Download metadata only; artifact contents stay behind their server-issued URL. */
+export interface MissionArtifact {
+  id: string;
+  kind: "markdown" | "presentation";
+  filename: string;
+  contentType: string;
+  size: number;
+  url: string;
+}
+
 export interface CommanderState {
   name: string;
   missionId?: string;
@@ -42,8 +58,10 @@ export interface CommanderState {
   replayMissionId?: string;
   finalResult?: string;
   presentationUrl?: string;
+  sources: MissionSource[];
+  artifacts: MissionArtifact[];
   error?: string;
-  runtimeMode: "live" | "demo" | "unavailable" | "unknown";
+  runtimeMode: "live" | "unavailable" | "unknown";
 }
 
 interface CommanderActions {
@@ -65,6 +83,8 @@ interface CommanderActions {
   postMessage: (message: BusMessage) => void;
   setFinalResult: (result?: string) => void;
   setPresentationUrl: (presentationUrl?: string) => void;
+  setSources: (sources: MissionSource[]) => void;
+  setArtifacts: (artifacts: MissionArtifact[]) => void;
   setError: (error?: string) => void;
   setRuntimeMode: (runtimeMode: CommanderState["runtimeMode"]) => void;
   beginReplay: (missionId: string) => void;
@@ -90,6 +110,8 @@ const initialState: CommanderState = {
     assembler: { id: "assembler", name: "ASSEMBLER", specialty: "synthesis", status: "idle", connected: true, progress: 0 },
   },
   busMessages: [],
+  sources: [],
+  artifacts: [],
   runtimeMode: "unknown",
 };
 
@@ -160,6 +182,8 @@ export const useCommanderStore = create<CommanderStore>((set) => ({
   })),
   setFinalResult: (finalResult) => set({ finalResult }),
   setPresentationUrl: (presentationUrl) => set({ presentationUrl }),
+  setSources: (sources) => set({ sources }),
+  setArtifacts: (artifacts) => set({ artifacts }),
   setError: (error) => set({ error }),
   setRuntimeMode: (runtimeMode) => set({ runtimeMode }),
   beginReplay: (replayMissionId) => set({ replayMissionId }),
@@ -174,6 +198,8 @@ export const useCommanderStore = create<CommanderStore>((set) => ({
     busMessages: [],
     finalResult: undefined,
     presentationUrl: undefined,
+    sources: [],
+    artifacts: [],
     error: undefined,
     runtimeMode: "unknown",
     status: "monitoring",

@@ -4,26 +4,100 @@ import { useState } from "react";
 
 import { useCommanderStore } from "@/lib/store";
 
-function renderLine(line: string, index: number) {
-  if (line.startsWith("### ")) return <h4 key={index} className="mt-5 text-sm font-semibold text-[#eeeeef]">{line.slice(4)}</h4>;
-  if (line.startsWith("## ")) return <h3 key={index} className="mt-5 text-base font-semibold text-[#f4f4f5]">{line.slice(3)}</h3>;
-  if (line.startsWith("# ")) return <h2 key={index} className="mt-1 text-xl font-semibold tracking-[-0.02em] text-[#f5f5f6]">{line.slice(2)}</h2>;
-  if (line.startsWith("- ")) return <li key={index} className="ml-5 list-disc text-[15px] leading-7 text-[#d1d1d6]">{line.slice(2)}</li>;
-  if (!line.trim()) return <div key={index} className="h-3" />;
-  return <p key={index} className="text-[15px] leading-7 text-[#d1d1d6]">{line.replace(/\*\*/g, "")}</p>;
+import { SafeMarkdown } from "./SafeMarkdown";
+
+function copyWithFallback(value: string) {
+  if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(value);
+  const input = document.createElement("textarea");
+  input.value = value;
+  input.style.position = "fixed";
+  input.style.opacity = "0";
+  document.body.append(input);
+  input.select();
+  document.execCommand("copy");
+  input.remove();
+  return Promise.resolve();
+}
+
+function markdownFilename(objective: string, result: string) {
+  if (/\breadme\b/i.test(objective)) return "README.md";
+  const heading = result.match(/^#\s+(.+)$/m)?.[1] ?? objective;
+  const slug = heading
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64);
+  return `${slug || "comradeiq-result"}.md`;
+}
+
+function safeDownloadUrl(value?: string) {
+  if (!value) return undefined;
+  if (value.startsWith("/")) return value;
+  try {
+    const url = new URL(value);
+    return ["https:", "http:"].includes(url.protocol) ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function formatBytes(value: number) {
+  return value < 1024 * 1024 ? `${Math.max(1, Math.round(value / 1024))} KB` : `${(value / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export function ResultPanel() {
   const result = useCommanderStore((state) => state.finalResult);
+  const objective = useCommanderStore((state) => state.objective);
   const presentationUrl = useCommanderStore((state) => state.presentationUrl);
-  const [copied, setCopied] = useState(false);
-  if (!result && !presentationUrl) return null;
+  const sources = useCommanderStore((state) => state.sources);
+  const artifacts = useCommanderStore((state) => state.artifacts);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+  const markdownArtifact = artifacts.find((artifact) => artifact.kind === "markdown");
+  const presentationArtifact = artifacts.find((artifact) => artifact.kind === "presentation");
+  const markdownDownloadUrl = safeDownloadUrl(markdownArtifact?.url);
+  const downloadUrl = safeDownloadUrl(presentationArtifact?.url ?? presentationUrl);
+  if (!result && !downloadUrl && !markdownDownloadUrl) return null;
 
-  async function copy() { if (!result) return; await navigator.clipboard.writeText(result); setCopied(true); window.setTimeout(() => setCopied(false), 1600); }
-  function downloadMarkdown() { if (!result) return; const url = URL.createObjectURL(new Blob([result], { type: "text/markdown" })); const link = document.createElement("a"); link.href = url; link.download = "README.md"; link.click(); URL.revokeObjectURL(url); }
+  async function copy() {
+    if (!result) return;
+    try {
+      await copyWithFallback(result);
+      setCopyState("copied");
+    } catch {
+      setCopyState("failed");
+    }
+    window.setTimeout(() => setCopyState("idle"), 1800);
+  }
 
-  return <section className="mt-7 rounded-2xl border border-white/[0.1] bg-[#262626] p-5 shadow-sm">
-    <div className="flex items-center justify-between gap-3"><p className="text-sm font-medium text-[#f2f2f3]">Result</p><div className="flex gap-2"><button type="button" onClick={() => void copy()} className="rounded-lg border border-white/[0.1] px-2.5 py-1 text-xs text-[#c9c9d0] transition hover:bg-white/[0.06]">{copied ? "Copied" : "Copy"}</button>{result?.trimStart().startsWith("#") && <button type="button" onClick={downloadMarkdown} className="rounded-lg border border-white/[0.1] px-2.5 py-1 text-xs text-[#c9c9d0] transition hover:bg-white/[0.06]">Download .md</button>}{presentationUrl && <a href={presentationUrl} download className="rounded-lg bg-[#10a37f] px-2.5 py-1 text-xs font-medium text-white">Download .pptx</a>}</div></div>
-    {result && <div className="mt-4 border-t border-white/[0.08] pt-4">{result.split("\n").map(renderLine)}</div>}
-  </section>;
+  function downloadMarkdown() {
+    if (!result) return;
+    const url = URL.createObjectURL(new Blob([result], { type: "text/markdown;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = markdownFilename(objective, result);
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+
+  return (
+    <section className="mt-8 rounded-2xl border border-white/[0.1] bg-[#242826] p-4 shadow-[0_12px_30px_rgba(0,0,0,0.12)] sm:p-5" role="region" aria-label="Mission result">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] pb-3">
+        <div>
+          <p className="text-sm font-medium text-[#f3f7f5]">Mission result</p>
+          <p className="mt-0.5 text-xs text-[#9da8a2]">Generated by the configured provider.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {result && <button type="button" onClick={() => void copy()} data-testid="copy-result" className="rounded-lg border border-white/[0.12] px-2.5 py-1.5 text-xs font-medium text-[#d9e3de] transition hover:bg-white/[0.07]">{copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy failed" : "Copy"}</button>}
+          {markdownDownloadUrl ? <a href={markdownDownloadUrl} download={markdownArtifact?.filename} data-testid="download-markdown" className="rounded-lg border border-white/[0.12] px-2.5 py-1.5 text-xs font-medium text-[#d9e3de] transition hover:bg-white/[0.07]">Download Markdown</a> : result && <button type="button" onClick={downloadMarkdown} data-testid="download-markdown" className="rounded-lg border border-white/[0.12] px-2.5 py-1.5 text-xs font-medium text-[#d9e3de] transition hover:bg-white/[0.07]">Download Markdown</button>}
+          {downloadUrl && <a href={downloadUrl} download data-testid="download-presentation" className="rounded-lg bg-[#10a37f] px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-[#13b38c]">Download PPTX</a>}
+        </div>
+      </div>
+      {result && <div className="pt-3"><SafeMarkdown content={result} /></div>}
+      {artifacts.length > 0 && <section className="mt-5 border-t border-white/[0.08] pt-4" aria-label="Mission artifacts"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#9eaaa4]">Artifacts</p><div className="mt-2 flex flex-wrap gap-2">{artifacts.map((artifact) => { const url = safeDownloadUrl(artifact.url); return url ? <a key={artifact.id} href={url} download={artifact.filename} className="rounded-lg border border-white/[0.1] bg-white/[0.025] px-2.5 py-2 text-xs text-[#d8e3dd] transition hover:bg-white/[0.08]">{artifact.filename} <span className="text-[#9aa69f]">· {formatBytes(artifact.size)}</span></a> : <span key={artifact.id} className="rounded-lg border border-white/[0.08] px-2.5 py-2 text-xs text-[#a6b0ab]">{artifact.filename}</span>; })}</div></section>}
+      {sources.length > 0 && <section className="mt-5 border-t border-white/[0.08] pt-4" aria-label="Research sources"><div className="flex items-center justify-between gap-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#9eaaa4]">Sources</p><span className="text-[11px] text-[#8d9992]">Web research provenance</span></div><ul className="mt-2 grid gap-2 sm:grid-cols-2">{sources.map((source, index) => { const url = safeDownloadUrl(source.url); return url ? <li key={`${source.url}-${index}`}><a href={url} target="_blank" rel="noreferrer" className="block rounded-xl border border-white/[0.09] bg-white/[0.025] px-3 py-2.5 text-sm text-[#a4ecd4] transition hover:border-[#55cfae]/45 hover:bg-[#10a37f]/[0.06]"><span className="block truncate font-medium">{source.title}</span><span className="mt-1 block truncate text-[11px] text-[#99aaa2]">{source.url}</span></a></li> : null; })}</ul></section>}
+      <p className="sr-only" role="status" aria-live="polite">{copyState === "copied" ? "Mission result copied to the clipboard." : copyState === "failed" ? "Unable to copy the mission result." : ""}</p>
+    </section>
+  );
 }
