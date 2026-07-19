@@ -84,7 +84,9 @@ Copy `.env.example` to `.env.local`. Do not commit `.env.local` or any credentia
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `OPENAI_API_KEY` | For live AI | Read only on the server; enables model calls and moderation. |
-| `OPENAI_MODEL` | No | Main Responses API model. Defaults to `gpt-5.6-terra`. |
+| `OPENAI_BASE_URL` | No | Server-only endpoint for an OpenAI-compatible provider; defaults to the official OpenAI API. |
+| `OPENAI_API_MODE` | No | `responses` by default. Set `chat-completions` only for a provider that documents the Chat Completions protocol. |
+| `OPENAI_MODEL` | No | Main model ID for the selected provider API mode. Defaults to `gpt-5.6-terra`. |
 | `OPENAI_VISION_MODEL` | No | Explicit vision-capable model used for supported image input. |
 | `BLOB_READ_WRITE_TOKEN` | Production | Credentials for a **private** Vercel Blob store. Enables durable mission/event/artifact persistence. |
 | `ABLY_API_KEY` | No | Optional best-effort realtime enhancement. SSE remains the default. |
@@ -96,6 +98,8 @@ Copy `.env.example` to `.env.local`. Do not commit `.env.local` or any credentia
 | `COMRADEIQ_DISABLE_MODERATION` | No | Set `true` only when an approved deployment policy requires moderation to be disabled. |
 
 `VERCEL_OIDC_TOKEN` and `BLOB_STORE_ID` are also supported when Vercel provides workload identity for the private Blob store.
+
+For a third-party Chat Completions gateway, set `OPENAI_BASE_URL`, `OPENAI_API_MODE=chat-completions`, and the gateway's exact model ID. Hosted OpenAI web search, source provenance, and OpenAI moderation are intentionally disabled in that mode unless separately implemented by the provider; ComradeIQ never claims those capabilities are available through a generic compatibility layer.
 
 ## Deployment
 

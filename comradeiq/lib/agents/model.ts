@@ -2,6 +2,8 @@ import "server-only";
 
 const DEFAULT_OPENAI_MODEL = "gpt-5.6-terra";
 
+export type OpenAIApiMode = "responses" | "chat-completions";
+
 function envBoolean(name: string, fallback = false) {
   const value = process.env[name]?.trim().toLowerCase();
   if (!value) return fallback;
@@ -15,11 +17,29 @@ function envInteger(name: string, fallback: number, min: number, max: number) {
 
 export const OPENAI_MODEL = process.env.OPENAI_MODEL?.trim() || DEFAULT_OPENAI_MODEL;
 export const OPENAI_VISION_MODEL = process.env.OPENAI_VISION_MODEL?.trim();
+export const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL?.trim();
+
+/**
+ * Official OpenAI uses Responses by default. Gateways that document only the
+ * Chat Completions protocol must opt in explicitly so requests are never
+ * retried against a different billable endpoint.
+ */
+export function openAIApiMode(): OpenAIApiMode {
+  return process.env.OPENAI_API_MODE?.trim().toLowerCase() === "chat-completions"
+    ? "chat-completions"
+    : "responses";
+}
+
+/** Hosted web search and OpenAI moderation have no generic Chat Completions equivalent. */
+export function supportsHostedOpenAIFeatures() {
+  return openAIApiMode() === "responses" && !OPENAI_BASE_URL;
+}
 
 export interface RuntimeConfiguration {
   provider: "openai" | "unconfigured";
   model?: string;
   visionModel?: string;
+  apiMode: OpenAIApiMode;
   webResearchEnabled: boolean;
   moderationEnabled: boolean;
   realtime: "ably" | "sse";
@@ -67,8 +87,9 @@ export function getRuntimeConfiguration(): RuntimeConfiguration {
     provider: providerAvailable ? "openai" : "unconfigured",
     model: providerAvailable ? OPENAI_MODEL : undefined,
     visionModel: providerAvailable && OPENAI_VISION_MODEL ? OPENAI_VISION_MODEL : undefined,
-    webResearchEnabled: providerAvailable,
-    moderationEnabled: providerAvailable && !envBoolean("COMRADEIQ_DISABLE_MODERATION"),
+    apiMode: openAIApiMode(),
+    webResearchEnabled: providerAvailable && supportsHostedOpenAIFeatures(),
+    moderationEnabled: providerAvailable && supportsHostedOpenAIFeatures() && !envBoolean("COMRADEIQ_DISABLE_MODERATION"),
     realtime: hasRealtimeTransport() ? "ably" : "sse",
     missionPersistence: durableStorageConfigured ? "vercel-blob-private" : "memory",
     artifactStorage: durableStorageConfigured ? "vercel-blob-private" : "memory",

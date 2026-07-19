@@ -45,9 +45,9 @@ export function ProviderStatus() {
   const copy = state === "loading"
     ? "Checking AI setup"
     : state === "ready"
-      ? `AI provider ready${health?.model ? ` · ${health.model}` : ""}`
+      ? `AI configured${health?.model ? ` · ${health.model}` : ""}`
       : state === "temporary-storage"
-        ? "AI ready · artifact storage is temporary"
+        ? "AI configured · artifact storage is temporary"
       : state === "needs-setup"
         ? "AI setup required"
         : "AI configuration unavailable";

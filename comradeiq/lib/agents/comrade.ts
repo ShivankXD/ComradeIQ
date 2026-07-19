@@ -1,10 +1,9 @@
 import "server-only";
 
-import type OpenAI from "openai";
 import type { ResponseInputMessageContentList } from "openai/resources/responses/responses";
 
 import type { ComradeRole, MissionSource, MissionType } from "./contracts";
-import type { ProviderCallContext } from "./openai";
+import type { ProviderCallContext, ProviderClient } from "./openai";
 import { createProviderResponse, sourcesFromResponse } from "./openai";
 
 export type { ComradeRole } from "./contracts";
@@ -74,7 +73,7 @@ function activityMessage(role: ComradeRole, status: "thinking" | "working" | "do
 
 /** Runs one role with only its explicit upstream inputs. No role receives hidden peer transcripts. */
 export async function runComrade(
-  client: OpenAI,
+  client: ProviderClient,
   input: ComradeOrder,
   context: ProviderCallContext,
   publish: MissionPublisher,
