@@ -5,9 +5,26 @@ import type { BusMessage, CommanderStatus, MissionArtifact, MissionSource } from
 import { useCommanderStore } from "@/lib/store";
 
 const commanderStatuses: CommanderStatus[] = ["idle", "thinking", "dispatching", "delegating", "monitoring", "synthesizing", "complete", "cancelled", "error"];
+const failedServerStatuses = new Set(["error", "timed_out", "interrupted"]);
+const terminalServerStatuses = new Set(["complete", "cancelled", "error", "timed_out", "interrupted"]);
 
 function isCommanderStatus(value: unknown): value is CommanderStatus {
   return typeof value === "string" && commanderStatuses.includes(value as CommanderStatus);
+}
+
+/**
+ * The API exposes a few terminal states that the compact UI deliberately folds
+ * into its single actionable `error` state. Without this mapping a persisted
+ * timeout/interruption can leave the composer looking as though work is still
+ * in progress.
+ */
+function displayStatus(value: unknown): CommanderStatus | undefined {
+  if (isCommanderStatus(value)) return value;
+  return value === "timed_out" || value === "interrupted" ? "error" : undefined;
+}
+
+function isTerminalServerStatus(value: unknown) {
+  return typeof value === "string" && terminalServerStatuses.has(value);
 }
 
 function safeUrl(value: unknown) {
@@ -115,15 +132,25 @@ export function applyMissionEvent(name: string, data: unknown) {
         state?: unknown;
         mission?: { status?: unknown; finalJson?: unknown; finalResult?: unknown; presentationUrl?: unknown; artifacts?: unknown; sources?: unknown; lastError?: { message?: unknown } };
       };
-      const status = payload.status ?? payload.state ?? payload.mission?.status;
+      const serverStatus = payload.status ?? payload.state ?? payload.mission?.status;
+      const status = displayStatus(serverStatus);
       if (isCommanderStatus(status)) {
         store.setStatus(status);
-        if (["complete", "cancelled", "error"].includes(status)) store.setMissionActive(false);
+        if (isTerminalServerStatus(serverStatus)) store.setMissionActive(false);
       }
       if (payload.mission) {
         applyPublicResult(payload.mission);
         const message = payload.mission.lastError?.message;
-        if (typeof message === "string" && message.trim()) store.setError(message);
+        if (typeof message === "string" && message.trim()) {
+          store.setError(message);
+          // A snapshot can be the first and only update a browser receives if
+          // the provider rejects a mission before SSE attaches. Render the
+          // stored failure as an actionable UI error in that case.
+          if (typeof serverStatus === "string" && failedServerStatuses.has(serverStatus)) {
+            store.setStatus("error");
+            store.setMissionActive(false);
+          }
+        }
       }
       break;
     }

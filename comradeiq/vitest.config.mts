@@ -6,6 +6,7 @@ export default defineConfig({
     // `server-only` is a Next.js build marker. Unit tests execute server modules
     // in Node, so resolve only that marker to an inert test-local module.
     alias: {
+      "@": fileURLToPath(new URL("./", import.meta.url)),
       "server-only": fileURLToPath(new URL("./tests/support/server-only.ts", import.meta.url)),
     },
   },

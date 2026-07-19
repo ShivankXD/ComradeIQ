@@ -4,7 +4,7 @@ import { useEffect } from "react";
 
 import { patchMission } from "@/lib/history/db";
 import { recordEvent } from "@/lib/history/recorder";
-import type { CommanderStatus } from "@/lib/store";
+import { useCommanderStore, type CommanderStatus } from "@/lib/store";
 
 import { applyMissionEvent, classifyEvent } from "./mission-events";
 
@@ -27,6 +27,7 @@ interface SharedSubscription {
 }
 
 const subscriptions = new Map<string, SharedSubscription>();
+const SNAPSHOT_POLL_MS = 3_000;
 
 function parseEvent(event: MessageEvent<string>) {
   try {
@@ -95,11 +96,53 @@ function releaseSubscription(missionId: string) {
   subscriptions.delete(missionId);
 }
 
+/**
+ * SSE is the fast path, but a provider can reject a mission before the browser
+ * has attached its stream. Hydrating the owned snapshot closes that race and
+ * also makes a transient EventSource failure visible instead of leaving the UI
+ * in its last "thinking" state.
+ */
+async function hydrateMissionSnapshot(missionId: string, signal: AbortSignal) {
+  try {
+    const response = await fetch(`/api/mission/${encodeURIComponent(missionId)}`, { cache: "no-store", signal });
+    if (!response.ok) return;
+    const payload = await response.json() as { mission?: unknown };
+    if (!signal.aborted && payload.mission) applyMissionEvent("mission.state", { mission: payload.mission });
+  } catch {
+    // The EventSource reconnect loop remains the primary transport. A failed
+    // snapshot request should never replace an existing, more helpful error.
+  }
+}
+
 /** SSE is the default durable transport; Ably may still be used by external clients but is never required by the UI. */
 export function useMissionRealtime(missionId?: string) {
   useEffect(() => {
     if (!missionId) return;
+    let disposed = false;
+    let hydrating = false;
+    const controller = new AbortController();
+
+    const hydrate = async () => {
+      if (disposed || hydrating) return;
+      hydrating = true;
+      try {
+        await hydrateMissionSnapshot(missionId, controller.signal);
+      } finally {
+        hydrating = false;
+      }
+    };
+
+    void hydrate();
     retainSubscription(missionId);
-    return () => releaseSubscription(missionId);
+    const interval = window.setInterval(() => {
+      if (!TERMINAL.includes(useCommanderStore.getState().status)) void hydrate();
+    }, SNAPSHOT_POLL_MS);
+
+    return () => {
+      disposed = true;
+      controller.abort();
+      window.clearInterval(interval);
+      releaseSubscription(missionId);
+    };
   }, [missionId]);
 }
