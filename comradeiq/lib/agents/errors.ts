@@ -47,6 +47,9 @@ export function asRuntimeError(error: unknown): RuntimeError {
   if (status === 401 || status === 403) {
     return new RuntimeError("provider_rejected", "The AI provider rejected this server configuration.", { status: 502 });
   }
+  if (status === 400 || status === 404 || status === 422) {
+    return new RuntimeError("provider_rejected", "The AI provider rejected this request. Please retry.", { status: 502, retryable: true });
+  }
   if (status === 429) {
     return new RuntimeError("provider_unavailable", "The AI provider is temporarily busy. Please retry shortly.", {
       status: 503,
@@ -61,7 +64,7 @@ export function asRuntimeError(error: unknown): RuntimeError {
       retryAfterSeconds: 15,
     });
   }
-  if (name === "APIConnectionTimeoutError" || name === "APIConnectionError") {
+  if (name === "APIConnectionTimeoutError" || name === "APIConnectionError" || /request timed out/i.test(candidate?.message ?? "")) {
     return new RuntimeError("provider_unavailable", "The AI provider could not be reached. Please retry shortly.", {
       status: 503,
       retryable: true,

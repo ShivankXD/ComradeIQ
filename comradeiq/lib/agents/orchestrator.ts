@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import type { ResponseInputMessageContentList } from "openai/resources/responses/responses";
 
 import { attachmentReferenceText } from "./attachments";
+import { markdownArtifactFilename } from "./artifact-filename";
 import { runComrade, type ComradeResult } from "./comrade";
 import type { ComradeRole, MissionArtifactSummary, MissionSource, MissionStatus } from "./contracts";
 import { executeMissionDag, type MissionDagNode } from "./dag";
@@ -43,6 +44,29 @@ interface CommanderPlan {
   steps: string[];
 }
 
+/**
+ * Compatibility gateways do not all implement reliable strict JSON Schema
+ * planning. These route-derived summaries are execution status, not synthetic
+ * model content, and preserve the request budget for the actual deliverable.
+ */
+function compatibilityPlan(record: MissionRecord) {
+  if (record.route.producesPresentation) {
+    return [
+      "Outline the requested deck.",
+      "Review the draft for clarity and factual boundaries.",
+      "Generate and package the PowerPoint file.",
+    ];
+  }
+  if (record.route.producesMarkdown) {
+    return [
+      "Draft the requested Markdown deliverable.",
+      "Review it for completeness and clarity.",
+      "Package a downloadable Markdown file.",
+    ];
+  }
+  return ["Draft a direct answer.", "Review it for accuracy and clarity."];
+}
+
 function inputWithImages(text: string, imageDataUrls: string[]): ResponseInputMessageContentList {
   return [
     { type: "input_text", text },
@@ -52,6 +76,12 @@ function inputWithImages(text: string, imageDataUrls: string[]): ResponseInputMe
 
 function readyImages(record: MissionRecord) {
   return record.input.attachments.flatMap((attachment) => attachment.kind === "image" && attachment.status === "ready" && attachment.imageDataUrl ? [attachment.imageDataUrl] : []);
+}
+
+function compactMarkdownResult(reports: Record<string, ComradeResult>) {
+  const writer = reports.writer;
+  if (!writer?.output.trim()) return undefined;
+  return { finalResult: writer.output.trim(), sources: writer.sources };
 }
 
 function mergeSources(...groups: MissionSource[][]) {
@@ -84,7 +114,7 @@ function buildAgentDag(
     return ["researcher", "writer", "formatter", "critic"].filter((candidate) => has(candidate as ComradeRole));
   };
   const attachmentReference = attachmentReferenceText(record.input.attachments);
-  const images = readyImages(record);
+  const images = OPENAI_VISION_MODEL ? readyImages(record) : [];
 
   return roles.map((role) => ({
     id: role,
@@ -144,12 +174,15 @@ async function finalizeTextMission(
   client: ReturnType<typeof createOpenAIClient>,
   context: ProviderCallContext,
 ) {
-  const images = readyImages(record);
+  const images = OPENAI_VISION_MODEL ? readyImages(record) : [];
+  const isReadme = record.route.producesMarkdown && /\breadme(?:\.md)?\b/i.test(record.input.missionText);
   const response = await createProviderResponse(client, {
     instructions: [
       "You are Commander Atlas performing final QA for the user-facing result.",
       record.route.producesMarkdown
-        ? "Return a complete practical Markdown artifact that fulfils the request. Do not describe the internal process."
+        ? isReadme
+          ? "Return a polished GitHub README in Markdown. Include a # title, features, setup or installation, usage, and contributing. Do not describe the internal process."
+          : "Return a complete practical Markdown artifact that fulfils the request. Do not describe the internal process."
         : "Return a direct, accurate answer to the user. Do not describe the internal process.",
       record.route.usesWeb
         ? "Use only the supplied research reports for web-derived claims. Preserve useful citations as Markdown links."
@@ -164,7 +197,9 @@ async function finalizeTextMission(
         `Actual specialist deliverables:\n${reportsText(reports) || "No specialist was required."}`,
       ].join("\n\n"), images),
     }],
-    max_output_tokens: record.route.producesMarkdown ? 6_000 : 2_000,
+    max_output_tokens: client.mode === "chat-completions"
+      ? (record.route.producesMarkdown ? 360 : 600)
+      : (record.route.producesMarkdown ? 6_000 : 2_000),
   }, context, images.length && OPENAI_VISION_MODEL ? OPENAI_VISION_MODEL : undefined);
   const finalResult = response.output_text.trim();
   if (!finalResult) throw new RuntimeError("provider_rejected", "The AI provider returned no final answer. Please retry.", { status: 502, retryable: true });
@@ -208,7 +243,7 @@ async function finalizePresentationMission(
         },
       },
     },
-    max_output_tokens: 6_000,
+    max_output_tokens: client.mode === "chat-completions" ? 360 : 6_000,
   }, context);
   try {
     const finalJson = sanitizePresentation(JSON.parse(response.output_text) as PresentationJson);
@@ -318,7 +353,9 @@ export async function executeMission(missionId: string): Promise<MissionExecutio
       return { finalResult: direct.finalResult, sources: direct.sources, artifacts: [] };
     }
 
-    const plan = await makeCommanderPlan(record, client, context);
+    const plan = client.mode === "chat-completions"
+      ? compatibilityPlan(record)
+      : await makeCommanderPlan(record, client, context);
     for (const step of plan) await publish("thinking.delta", { token: `${step}\n` });
 
     await setStatus(record, "dispatching", record.requestId, context.assertActive);
@@ -350,11 +387,13 @@ export async function executeMission(missionId: string): Promise<MissionExecutio
       return { finalJson: final.finalJson, presentationUrl, artifacts: [artifact], sources };
     }
 
-    const final = await finalizeTextMission(record, reports, client, context);
+    const final = client.mode === "chat-completions" && record.route.producesMarkdown
+      ? compactMarkdownResult(reports) ?? await finalizeTextMission(record, reports, client, context)
+      : await finalizeTextMission(record, reports, client, context);
     const sources = mergeSources(reportSources, final.sources);
     let artifact: MissionArtifactSummary | undefined;
     if (record.route.producesMarkdown) {
-      artifact = await persistArtifact(record, "markdown", "comradeiq-artifact.md", "text/markdown; charset=utf-8", new TextEncoder().encode(final.finalResult), context.assertActive!);
+      artifact = await persistArtifact(record, "markdown", markdownArtifactFilename(record.input.missionText, final.finalResult), "text/markdown; charset=utf-8", new TextEncoder().encode(final.finalResult), context.assertActive!);
     }
     await updateActiveMission((current) => {
       current.finalResult = final.finalResult;

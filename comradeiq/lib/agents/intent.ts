@@ -7,6 +7,8 @@ export interface IntentCapabilities {
   webEnabled: boolean;
   visionEnabled: boolean;
   durableArtifactStorage: boolean;
+  /** OpenAI-compatible gateways can need a compact delivery DAG to meet their request deadline. */
+  compactDelivery?: boolean;
 }
 
 export interface IntentInput {
@@ -42,6 +44,12 @@ export function classifyMissionIntent(input: IntentInput): MissionRoute {
   const isArtifact = ARTIFACT_TERMS.test(text);
   const asksForResearch = RESEARCH_TERMS.test(text);
   const wantsWeb = asksForResearch && input.capabilities.webEnabled;
+  const artifactDeliveryRoles: ComradeRole[] = input.capabilities.compactDelivery
+    ? ["writer"]
+    : ["writer", "formatter", "critic", "assembler"];
+  const presentationDeliveryRoles: ComradeRole[] = input.capabilities.compactDelivery
+    ? []
+    : ["writer", "formatter", "critic", "assembler"];
   const notices: string[] = [];
 
   if (!input.capabilities.providerAvailable) {
@@ -60,7 +68,7 @@ export function classifyMissionIntent(input: IntentInput): MissionRoute {
   if (isPresentation) {
     return {
       intent: "presentation",
-      activeRoles: ["writer", "formatter", "critic", "assembler", ...(wantsWeb ? ["researcher" as const] : [])],
+      activeRoles: [...(wantsWeb ? ["researcher" as const] : []), ...presentationDeliveryRoles],
       producesMarkdown: false,
       producesPresentation: true,
       usesWeb: wantsWeb,
@@ -72,7 +80,7 @@ export function classifyMissionIntent(input: IntentInput): MissionRoute {
   if (isArtifact) {
     return {
       intent: "artifact",
-      activeRoles: ["writer", "formatter", "critic", "assembler", ...(wantsWeb ? ["researcher" as const] : [])],
+      activeRoles: [...(wantsWeb ? ["researcher" as const] : []), ...artifactDeliveryRoles],
       producesMarkdown: true,
       producesPresentation: false,
       usesWeb: wantsWeb,

@@ -86,7 +86,7 @@ function isEasyInputMessage(item: ResponseInputItem): item is EasyInputMessage {
 
 function chatContent(content: string | ResponseInputContent[]): string | ChatCompletionContentPart[] {
   if (typeof content === "string") return content;
-  return content.map((part) => {
+  const mapped = content.map((part) => {
     if (part.type === "input_text") return { type: "text" as const, text: part.text };
     if (part.type === "input_image") {
       if (!part.image_url) {
@@ -103,6 +103,12 @@ function chatContent(content: string | ResponseInputContent[]): string | ChatCom
     }
     throw new RuntimeError("provider_rejected", "This Chat Completions provider does not support file attachment parts.", { status: 400 });
   });
+  // Although OpenAI permits an array of text parts, several otherwise
+  // compatible gateways handle a plain string more reliably. Preserve the
+  // array only when it contains an image that actually needs multipart input.
+  return mapped.every((part) => part.type === "text")
+    ? mapped.map((part) => part.text).join("\n")
+    : mapped;
 }
 
 function textOnlyChatContent(content: string | ChatCompletionContentPart[]) {
@@ -186,10 +192,17 @@ function sourcesFromOpenAIResponse(response: OpenAIResponse): MissionSource[] {
 }
 
 function normalizeChatCompletion(response: ChatCompletion): ProviderResponse {
-  const output_text = response.choices
-    .map((choice) => typeof choice.message.content === "string" ? choice.message.content : "")
+  const choices = Array.isArray(response.choices) ? response.choices : [];
+  const output_text = choices
+    .map((choice) => typeof choice?.message?.content === "string" ? choice.message.content : "")
     .join("\n")
     .trim();
+  if (!output_text) {
+    throw new RuntimeError("provider_rejected", "The AI provider returned no usable text. Please retry.", {
+      status: 502,
+      retryable: true,
+    });
+  }
   // Generic Chat Completions has no trustworthy equivalent to Responses web-search provenance.
   return { output_text, sources: [] };
 }

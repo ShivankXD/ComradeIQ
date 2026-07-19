@@ -80,4 +80,22 @@ describe("classifyMissionIntent", () => {
       "Artifacts are available only for this running instance until private object storage is configured.",
     ]));
   });
+
+  it("uses a compact writer-to-Commander path for latency-constrained chat gateways", () => {
+    const route = classify({
+      text: "Create a README for Pulse.",
+      capabilities: { ...availableCapabilities, compactDelivery: true },
+    });
+
+    expect(route).toMatchObject({ intent: "artifact", activeRoles: ["writer"], producesMarkdown: true });
+  });
+
+  it("generates compact gateway presentations directly as a real deck artifact", () => {
+    const route = classify({
+      text: "Create a PowerPoint presentation about Pulse.",
+      capabilities: { ...availableCapabilities, compactDelivery: true },
+    });
+
+    expect(route).toMatchObject({ intent: "presentation", activeRoles: [], producesPresentation: true });
+  });
 });

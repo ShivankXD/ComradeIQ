@@ -48,4 +48,12 @@ describe("OpenAI-compatible Chat Completions adapter", () => {
       tools: [{ type: "web_search" }],
     }, "gateway-model")).toThrow(RuntimeError);
   });
+
+  it("flattens text-only content parts for compatible gateways", () => {
+    const request = toChatCompletionRequest({
+      input: [{ role: "user", content: [{ type: "input_text", text: "First paragraph." }, { type: "input_text", text: "Second paragraph." }] }],
+    }, "gateway-model");
+
+    expect(request.messages).toEqual([{ role: "user", content: "First paragraph.\nSecond paragraph." }]);
+  });
 });

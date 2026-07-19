@@ -3,6 +3,7 @@ import "server-only";
 import type { ResponseInputMessageContentList } from "openai/resources/responses/responses";
 
 import type { ComradeRole, MissionSource, MissionType } from "./contracts";
+import { RuntimeError } from "./errors";
 import type { ProviderCallContext, ProviderClient } from "./openai";
 import { createProviderResponse, sourcesFromResponse } from "./openai";
 
@@ -31,14 +32,24 @@ export interface ComradeResult {
 
 export type MissionPublisher = (name: string, data: unknown) => Promise<void>;
 
-function roleInstruction(role: ComradeRole, missionType: MissionType) {
+function outputBudget(client: ProviderClient, input: ComradeOrder) {
+  if (client.mode !== "chat-completions") return input.missionType === "presentation" ? 3_000 : 4_000;
+  // Compatibility gateways often have a low effective response-time budget.
+  // Keep specialist hand-offs concise so the dependent review can still finish.
+  return input.role === "critic" ? 180 : 320;
+}
+
+function roleInstruction(role: ComradeRole, missionType: MissionType, objective: string) {
   const presentation = missionType === "presentation";
+  const isReadme = /\breadme(?:\.md)?\b/i.test(objective);
   switch (role) {
     case "researcher":
       return "Produce a concise evidence brief. When web search is enabled, cite only sources returned by the tool; otherwise analyze only supplied references. Never invent URLs, statistics, images, or citations.";
     case "writer":
       return presentation
         ? "Draft audience-ready slide copy. Each title is a takeaway and each slide has at most five short bullets. Use only the objective, supplied references, and upstream work."
+        : isReadme
+          ? "Write a polished GitHub README in Markdown. Include a # title, features, setup or installation, usage, and contributing. Keep it practical and ready to save as README.md."
         : "Draft the requested user-facing content in clear Markdown. Do not discuss this multi-agent process or invent research.";
     case "formatter":
       return presentation
@@ -95,7 +106,7 @@ export async function runComrade(
   const response = await createProviderResponse(client, {
     instructions: [
       `You are the ${input.role} Comrade supporting Commander ${input.commanderName}.`,
-      roleInstruction(input.role, input.missionType),
+      roleInstruction(input.role, input.missionType, input.objective),
       "Your output will be handed to a later role. Return only the requested deliverable, not private reasoning or process narration.",
     ].join("\n"),
     input: [{ role: "user", content }],
@@ -103,11 +114,16 @@ export async function runComrade(
       tools: [{ type: "web_search" as const }],
       include: ["web_search_call.action.sources" as const],
     } : {}),
-    max_output_tokens: input.missionType === "presentation" ? 3_000 : 4_000,
+    max_output_tokens: outputBudget(client, input),
   }, context, input.imageDataUrls.length && input.visionModel ? input.visionModel : undefined);
 
   const output = response.output_text.trim();
-  if (!output) throw new Error(`The ${input.role} returned no usable output.`);
+  if (!output) {
+    throw new RuntimeError("provider_rejected", `The ${input.role} returned no usable output. Please retry.`, {
+      status: 502,
+      retryable: true,
+    });
+  }
   const result: ComradeResult = { comradeId: input.comradeId, role: input.role, output, sources: sourcesFromResponse(response) };
 
   await publish("comrade.status", { comradeId: input.comradeId, status: "done" });
