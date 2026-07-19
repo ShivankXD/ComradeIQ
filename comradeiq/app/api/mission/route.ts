@@ -1,39 +1,70 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 
-import { startMission, type ConnectedComrade } from "@/lib/agents/orchestrator";
-import type { MissionType } from "@/lib/store";
+import { runtimeErrorResponse, withRequestId } from "@/lib/agents/api";
+import { classifyMissionIntent } from "@/lib/agents/intent";
+import { acquireMissionSlot, consumeMissionRateLimit } from "@/lib/agents/limits";
+import { createMission } from "@/lib/agents/missions";
+import { getRuntimeConfiguration } from "@/lib/agents/model";
+import { executeMission } from "@/lib/agents/orchestrator";
+import { parseMissionRequest, publicAttachmentLabels, requestIdFor } from "@/lib/agents/request";
+import { assertSameOrigin, getAnonymousSession, setAnonymousSessionCookie } from "@/lib/agents/session";
+import { RuntimeError } from "@/lib/agents/errors";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
+  const requestId = requestIdFor(request);
+  let slot: ReturnType<typeof acquireMissionSlot> | undefined;
   try {
-    const body = await request.json() as {
-      missionId?: string;
-      commanderName?: string;
-      missionText?: string;
-      missionType?: MissionType;
-      connectedComrades?: ConnectedComrade[];
-      useInternet?: boolean;
-      attachmentContext?: string[];
-    };
-
-    if (!body.missionId || !body.commanderName?.trim() || !body.missionText?.trim() || !["presentation", "general"].includes(body.missionType ?? "") || !Array.isArray(body.connectedComrades)) {
-      return NextResponse.json({ error: "A mission id, Commander name, mission objective, and operational Comrades are required." }, { status: 400 });
+    assertSameOrigin(request);
+    const session = getAnonymousSession(request, true);
+    if (!session) throw new RuntimeError("forbidden", "Unable to establish a mission session.", { status: 403 });
+    const configuration = getRuntimeConfiguration();
+    if (configuration.provider === "unconfigured") {
+      throw new RuntimeError("provider_unconfigured", "Live AI is not configured. Add OPENAI_API_KEY on the server, then restart the deployment.", { status: 503 });
     }
 
-    const result = await startMission({
-      missionId: body.missionId,
-      commanderName: body.commanderName.trim(),
-      missionText: body.missionText.trim(),
-      missionType: body.missionType as MissionType,
-      connectedComrades: body.connectedComrades,
-      useInternet: Boolean(body.useInternet),
-      attachmentContext: body.attachmentContext?.filter((item) => typeof item === "string").slice(0, 3) ?? [],
+    consumeMissionRateLimit(session.id);
+    slot = acquireMissionSlot(session.id);
+    const input = await parseMissionRequest(request);
+    const route = classifyMissionIntent({
+      text: input.missionText,
+      missionType: input.missionType,
+      attachmentKinds: input.attachments.map((attachment) => attachment.kind),
+      capabilities: {
+        providerAvailable: configuration.provider === "openai",
+        webEnabled: input.useInternet && configuration.webResearchEnabled,
+        visionEnabled: Boolean(configuration.visionModel),
+        durableArtifactStorage: configuration.durableStorageConfigured,
+      },
+    });
+    const mission = await createMission(session.id, requestId, input, route);
+
+    after(async () => {
+      try {
+        await executeMission(mission.id);
+      } finally {
+        slot?.release();
+      }
     });
 
-    return NextResponse.json({ started: true, mode: "live", missionId: body.missionId, finalJson: result.finalJson, finalResult: result.finalResult, presentationUrl: result.presentationUrl });
+    const response = NextResponse.json({
+      started: true,
+      mode: "live",
+      missionId: mission.id,
+      clientMissionId: input.clientMissionId,
+      requestId,
+      status: "queued",
+      streamUrl: `/api/mission/${mission.id}/events`,
+      missionUrl: `/api/mission/${mission.id}`,
+      route: { intent: route.intent, notices: route.notices },
+      attachments: publicAttachmentLabels(input.attachments),
+    }, { status: 202 });
+    setAnonymousSessionCookie(response, session);
+    return withRequestId(response, requestId);
   } catch (error) {
-    console.error("Commander mission failed", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "The Commander could not start the mission." }, { status: 500 });
+    slot?.release();
+    return runtimeErrorResponse(error, requestId, "mission.start");
   }
 }

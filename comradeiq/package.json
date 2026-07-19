@@ -6,14 +6,17 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@xyflow/react": "^12.11.2",
+    "@vercel/blob": "^2.6.1",
     "ably": "^2.24.0",
     "framer-motion": "^12.42.2",
     "next": "15.5.20",
     "openai": "^6.47.0",
+    "pdf-parse": "^2.4.5",
     "pptxgenjs": "^4.0.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
@@ -21,6 +24,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -28,6 +32,10 @@
     "eslint": "^9",
     "eslint-config-next": "15.5.20",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
+  },
+  "overrides": {
+    "postcss": "8.5.19"
   }
 }
