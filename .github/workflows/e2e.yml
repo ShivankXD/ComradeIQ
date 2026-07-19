@@ -1,0 +1,50 @@
+name: Browser acceptance tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_live_provider:
+        description: Run real-provider flows (uses the repository OPENAI_API_KEY secret).
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: comradeiq
+
+jobs:
+  playwright:
+    name: Playwright Chromium
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      COMRADEIQ_E2E_LIVE: ${{ inputs.run_live_provider && '1' || '0' }}
+      OPENAI_API_KEY: ${{ inputs.run_live_provider == true && secrets.OPENAI_API_KEY || '' }}
+      OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: comradeiq/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run browser acceptance tests
+        run: npm run test:e2e
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            comradeiq/playwright-report/
+            comradeiq/test-results/
+          if-no-files-found: ignore
