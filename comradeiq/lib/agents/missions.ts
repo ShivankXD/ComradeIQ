@@ -121,10 +121,11 @@ async function persistRecord(record: MissionRecord) {
 async function loadRecord(id: string, fresh = false): Promise<MissionRecord | undefined> {
   const cached = records.get(id);
   if (cached && !fresh) return clone(cached);
-  if (objectStorageKind() === "memory") return undefined;
+  const storage = objectStorageKind();
+  if (storage === "memory") return undefined;
 
   const bytes = await readPrivateObject({
-    storage: "vercel-blob-private",
+    storage,
     key: metadataKey(id),
     contentType: "application/json",
     size: 0,
@@ -275,14 +276,15 @@ export async function appendMissionEvent(
 export async function listMissionEvents(id: string, after = 0): Promise<MissionEvent[]> {
   assertMissionId(id);
   const local = events.get(id);
-  if (objectStorageKind() === "memory") return (local ?? []).filter((event) => event.seq > after).map(clone);
+  const storage = objectStorageKind();
+  if (storage === "memory") return (local ?? []).filter((event) => event.seq > after).map(clone);
 
   const keys = await listPrivateObjectKeys(eventsPrefix(id));
   const result: MissionEvent[] = [];
   for (const key of keys) {
     const seq = Number.parseInt(key.slice(key.lastIndexOf("/") + 1, -5), 10);
     if (!Number.isFinite(seq) || seq <= after) continue;
-    const bytes = await readPrivateObject({ storage: "vercel-blob-private", key, contentType: "application/json", size: 0 });
+    const bytes = await readPrivateObject({ storage, key, contentType: "application/json", size: 0 });
     if (!bytes) continue;
     try {
       const event = JSON.parse(new TextDecoder().decode(bytes)) as MissionEvent;

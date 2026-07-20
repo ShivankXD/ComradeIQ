@@ -7,6 +7,8 @@ export interface IntentCapabilities {
   webEnabled: boolean;
   visionEnabled: boolean;
   durableArtifactStorage: boolean;
+  /** Local development files survive dev-server restarts, but are not deployable storage. */
+  persistentLocalArtifactStorage?: boolean;
   /** OpenAI-compatible gateways can need a compact delivery DAG to meet their request deadline. */
   compactDelivery?: boolean;
 }
@@ -61,7 +63,7 @@ export function classifyMissionIntent(input: IntentInput): MissionRoute {
   if (hasImage && !input.capabilities.visionEnabled) {
     notices.push("Image input is attached but no vision-capable model is configured.");
   }
-  if ((isPresentation || isArtifact) && !input.capabilities.durableArtifactStorage) {
+  if ((isPresentation || isArtifact) && !input.capabilities.durableArtifactStorage && !input.capabilities.persistentLocalArtifactStorage) {
     notices.push("Artifacts are available only for this running instance until private object storage is configured.");
   }
 

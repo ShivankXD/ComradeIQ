@@ -21,7 +21,7 @@ import {
 } from "./missions";
 import { runtimeLimits, OPENAI_VISION_MODEL } from "./model";
 import { createOpenAIClient, createProviderResponse, moderateMissionInput, sourcesFromResponse, type ProviderCallContext } from "./openai";
-import { buildPresentation, presentationFilename, sanitizePresentation, type PresentationJson } from "./presentation";
+import { assertPresentationQuality, buildPresentation, presentationFilename, requestedSlideCount, sanitizePresentation, type PresentationJson } from "./presentation";
 import { emitMissionEvent } from "./realtime";
 import { putPrivateObject } from "./storage";
 
@@ -181,9 +181,9 @@ async function finalizeTextMission(
       "You are Commander Atlas performing final QA for the user-facing result.",
       record.route.producesMarkdown
         ? isReadme
-          ? "Return a polished GitHub README in Markdown. Include a # title, features, setup or installation, usage, and contributing. Do not describe the internal process."
-          : "Return a complete practical Markdown artifact that fulfils the request. Do not describe the internal process."
-        : "Return a direct, accurate answer to the user. Do not describe the internal process.",
+          ? "Return a polished GitHub README in Markdown. Begin with one ATX '# ' title, then include ## Features, ## Installation or ## Setup, ## Usage, and ## Contributing. Do not use placeholder claims, invented URLs, or internal-process narration."
+          : "Return a complete practical Markdown artifact that fulfils every explicit request. Use clear headings and code fences when they help. Do not describe the internal process."
+        : "Return a direct, accurate, complete answer to the user. Address every explicit request without describing the internal process.",
       record.route.usesWeb
         ? "Use only the supplied research reports for web-derived claims. Preserve useful citations as Markdown links."
         : "Do not claim to have browsed the web or cite invented sources.",
@@ -212,8 +212,16 @@ async function finalizePresentationMission(
   client: ReturnType<typeof createOpenAIClient>,
   context: ProviderCallContext,
 ) {
+  const slideCount = requestedSlideCount(record.input.missionText);
   const response = await createProviderResponse(client, {
-    instructions: "You are Commander Atlas performing final presentation QA. Produce only a compact slide deck JSON using the reviewed specialist deliverables. Titles must be takeaway statements, bullets must be brief, and imageQuery is visual direction only—not a URL or claim that an image was fetched. Do not invent facts or citations.",
+    instructions: [
+      "You are Commander Atlas producing an audience-ready presentation, not a planning document.",
+      `Return exactly ${slideCount} slides as compact JSON for the audience and purpose in the user request.`,
+      "Build a coherent story: open with context or stakes, develop the practical insight or plan, and close with a clear next action or decision.",
+      "Every title must be a specific takeaway statement. Each keyMessage must explain why the slide matters. Give every non-opening slide two to four concise, concrete bullets.",
+      "Choose layout=opening for the opening slide, insight for a claim with supporting points, process for ordered steps, or action for a closing plan.",
+      "Use only supplied material and conservative general knowledge. Do not invent statistics, citations, outcomes, people, or external images.",
+    ].join("\n"),
     input: `User request: ${record.input.missionText}\n\nActual specialist deliverables:\n${reportsText(reports) || "No specialist was available; derive only a conservative deck from the request."}`,
     text: {
       format: {
@@ -224,16 +232,16 @@ async function finalizePresentationMission(
           type: "object",
           properties: {
             slides: {
-              type: "array", minItems: 1, maxItems: 20,
+              type: "array", minItems: slideCount, maxItems: slideCount,
               items: {
                 type: "object",
                 properties: {
                   title: { type: "string" },
-                  bullets: { type: "array", items: { type: "string" }, maxItems: 5 },
-                  imageQuery: { type: "string" },
-                  transition: { type: "string" },
+                  keyMessage: { type: "string" },
+                  bullets: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 4 },
+                  layout: { type: "string", enum: ["opening", "insight", "process", "action"] },
                 },
-                required: ["title", "bullets", "imageQuery", "transition"],
+                required: ["title", "keyMessage", "bullets", "layout"],
                 additionalProperties: false,
               },
             },
@@ -243,11 +251,11 @@ async function finalizePresentationMission(
         },
       },
     },
-    max_output_tokens: client.mode === "chat-completions" ? 360 : 6_000,
+    max_output_tokens: client.mode === "chat-completions" ? Math.min(2_200, Math.max(500, 130 + slideCount * 155)) : 6_000,
   }, context);
   try {
     const finalJson = sanitizePresentation(JSON.parse(response.output_text) as PresentationJson);
-    if (!finalJson.slides.length) throw new Error("empty deck");
+    assertPresentationQuality(finalJson, slideCount);
     return { finalJson, sources: sourcesFromResponse(response) };
   } catch (error) {
     throw new RuntimeError("provider_rejected", "The AI provider returned an invalid presentation. Please retry.", { status: 502, retryable: true, cause: error });

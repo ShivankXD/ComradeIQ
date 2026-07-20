@@ -8,11 +8,11 @@ type ProviderHealth = {
   configuration?: {
     deploymentReady?: boolean;
     durableStorageConfigured?: boolean;
-    storage?: { durable?: boolean; note?: string };
+    storage?: { kind?: "vercel-blob-private" | "local-filesystem" | "memory"; durable?: boolean; note?: string };
   };
 };
 
-type HealthState = "loading" | "ready" | "temporary-storage" | "needs-setup" | "unavailable";
+type HealthState = "loading" | "ready" | "local-storage" | "temporary-storage" | "needs-setup" | "unavailable";
 
 /** Displays only deployment-safe configuration state; it never exposes credentials. */
 export function ProviderStatus() {
@@ -29,6 +29,8 @@ export function ProviderStatus() {
         const providerReady = data.provider === "openai";
         if (!providerReady) {
           setState("needs-setup");
+        } else if (data.configuration?.storage?.kind === "local-filesystem") {
+          setState("local-storage");
         } else if (!data.configuration?.deploymentReady || !data.configuration?.durableStorageConfigured) {
           setState("temporary-storage");
         } else {
@@ -46,12 +48,14 @@ export function ProviderStatus() {
     ? "Checking AI setup"
     : state === "ready"
       ? `AI configured${health?.model ? ` · ${health.model}` : ""}`
+      : state === "local-storage"
+        ? "AI configured · artifacts persist locally"
       : state === "temporary-storage"
         ? "AI configured · artifact storage is temporary"
       : state === "needs-setup"
         ? "AI setup required"
         : "AI configuration unavailable";
-  const tone = state === "ready" ? "bg-[#78e0c1]" : state === "temporary-storage" || state === "needs-setup" ? "bg-amber-300" : state === "unavailable" ? "bg-rose-300" : "bg-[#929b96]";
+  const tone = state === "ready" || state === "local-storage" ? "bg-[#78e0c1]" : state === "temporary-storage" || state === "needs-setup" ? "bg-amber-300" : state === "unavailable" ? "bg-rose-300" : "bg-[#929b96]";
 
   return (
     <p data-testid="provider-health" className="flex items-center gap-2 text-xs text-[#aeb8b3]" role="status" aria-live="polite" aria-atomic="true">

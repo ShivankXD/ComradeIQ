@@ -49,8 +49,8 @@ function roleInstruction(role: ComradeRole, missionType: MissionType, objective:
       return presentation
         ? "Draft audience-ready slide copy. Each title is a takeaway and each slide has at most five short bullets. Use only the objective, supplied references, and upstream work."
         : isReadme
-          ? "Write a polished GitHub README in Markdown. Include a # title, features, setup or installation, usage, and contributing. Keep it practical and ready to save as README.md."
-        : "Draft the requested user-facing content in clear Markdown. Do not discuss this multi-agent process or invent research.";
+          ? "Write a polished GitHub README in Markdown. Begin with one ATX '# ' title, then include ## Features, ## Installation or ## Setup, ## Usage, and ## Contributing. Fulfil every explicit request, avoid placeholder claims or imaginary links, and make it ready to save as README.md."
+        : "Draft the requested user-facing content in clear Markdown. Fulfil every explicit requirement, use a practical structure, and do not discuss this multi-agent process or invent research.";
     case "formatter":
       return presentation
         ? "Normalize the writer's actual draft into a compact presentation outline. Preserve its facts; flag ambiguity rather than inventing material."

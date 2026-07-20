@@ -21,6 +21,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ miss
     return new Response(body, {
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "Content-Length": String(content.byteLength),
         "Content-Disposition": `attachment; filename="${artifact.filename.replace(/[^A-Za-z0-9._-]/g, "-")}"`,
         "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",

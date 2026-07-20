@@ -37,6 +37,7 @@ export async function POST(request: Request) {
         webEnabled: input.useInternet && configuration.webResearchEnabled,
         visionEnabled: Boolean(configuration.visionModel),
         durableArtifactStorage: configuration.durableStorageConfigured,
+        persistentLocalArtifactStorage: configuration.artifactStorage === "local-filesystem",
         compactDelivery: configuration.apiMode === "chat-completions",
       },
     });

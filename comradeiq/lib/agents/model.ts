@@ -43,8 +43,8 @@ export interface RuntimeConfiguration {
   webResearchEnabled: boolean;
   moderationEnabled: boolean;
   realtime: "ably" | "sse";
-  missionPersistence: "vercel-blob-private" | "memory";
-  artifactStorage: "vercel-blob-private" | "memory";
+  missionPersistence: "vercel-blob-private" | "local-filesystem" | "memory";
+  artifactStorage: "vercel-blob-private" | "local-filesystem" | "memory";
   durableStorageConfigured: boolean;
   coordination: "instance-local-fenced";
   deploymentReady: boolean;
@@ -69,6 +69,15 @@ export function hasPrivateBlobStorage() {
   return Boolean(process.env.BLOB_READ_WRITE_TOKEN?.trim() || (process.env.VERCEL_OIDC_TOKEN?.trim() && process.env.BLOB_STORE_ID?.trim()));
 }
 
+/**
+ * Keep local development artifacts available across Next dev-server restarts.
+ * Production still requires private Blob storage; local disk is never treated
+ * as a deployment-safe persistence layer.
+ */
+export function usesLocalFilesystemStorage() {
+  return process.env.NODE_ENV === "development" && !hasPrivateBlobStorage();
+}
+
 export function runtimeLimits() {
   return {
     maxMissionSeconds: envInteger("COMRADEIQ_MISSION_TIMEOUT_SECONDS", 55, 10, 300),
@@ -82,6 +91,7 @@ export function runtimeLimits() {
 /** Safe health/config state; it intentionally never reports a credential or validates a key by calling a model. */
 export function getRuntimeConfiguration(): RuntimeConfiguration {
   const durableStorageConfigured = hasPrivateBlobStorage();
+  const localFilesystemStorage = usesLocalFilesystemStorage();
   const providerAvailable = hasOpenAIProvider();
   return {
     provider: providerAvailable ? "openai" : "unconfigured",
@@ -91,8 +101,8 @@ export function getRuntimeConfiguration(): RuntimeConfiguration {
     webResearchEnabled: providerAvailable && supportsHostedOpenAIFeatures(),
     moderationEnabled: providerAvailable && supportsHostedOpenAIFeatures() && !envBoolean("COMRADEIQ_DISABLE_MODERATION"),
     realtime: hasRealtimeTransport() ? "ably" : "sse",
-    missionPersistence: durableStorageConfigured ? "vercel-blob-private" : "memory",
-    artifactStorage: durableStorageConfigured ? "vercel-blob-private" : "memory",
+    missionPersistence: durableStorageConfigured ? "vercel-blob-private" : localFilesystemStorage ? "local-filesystem" : "memory",
+    artifactStorage: durableStorageConfigured ? "vercel-blob-private" : localFilesystemStorage ? "local-filesystem" : "memory",
     durableStorageConfigured,
     coordination: "instance-local-fenced",
     // A memory fallback is useful for local development, but intentionally not called deployment-ready.
