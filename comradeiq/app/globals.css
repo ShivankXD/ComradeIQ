@@ -155,6 +155,10 @@ dialog, [role="dialog"] {
   0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
   30%            { transform: translateY(-5px); opacity: 1; }
 }
+@keyframes shimmer {
+  0%   { background-position: -400% center; }
+  100% { background-position:  400% center; }
+}
 
 /* ── Utility: neon text ─────────────────────────────── */
 .text-neon {

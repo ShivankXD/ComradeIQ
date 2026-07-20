@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 
 import { CommandInputBar } from "@/components/panels/CommandInputBar";
+import { ContextWindowBar } from "@/components/panels/ContextWindowBar";
 import { MissionActivityPanel } from "@/components/panels/MissionActivityPanel";
 import { MissionConversation } from "@/components/panels/MissionConversation";
 import { ProviderStatus } from "@/components/panels/ProviderStatus";
@@ -183,39 +184,45 @@ export default function Home() {
         )}
       </div>
 
-      {/* Commander section */}
+      {/* Context window + Commander section */}
       <div
-        className="mt-4 pt-4"
+        className="mt-4 pt-4 space-y-3"
         style={{ borderTop: "1px solid var(--border-dim)" }}
       >
-        <label
-          className="block text-[9px] font-semibold uppercase px-1 mb-1.5"
-          htmlFor={`commander-name-${scope}`}
-          style={{ color: "var(--text-muted)", letterSpacing: "0.14em", fontFamily: "var(--font-code)" }}
-        >
-          Commander
-        </label>
-        <input
-          id={`commander-name-${scope}`}
-          value={commanderName}
-          onChange={(event) => setCommanderName(event.target.value)}
-          className="w-full rounded-lg px-2.5 py-2 text-[13px] transition-all duration-150"
-          style={{
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid var(--border-dim)",
-            color: "var(--text-primary)",
-            outline: "none",
-          }}
-          onFocus={(e) => {
-            (e.currentTarget as HTMLInputElement).style.borderColor = "rgba(0,229,160,0.35)";
-            (e.currentTarget as HTMLInputElement).style.boxShadow = "0 0 0 2px rgba(0,229,160,0.08)";
-          }}
-          onBlur={(e) => {
-            (e.currentTarget as HTMLInputElement).style.borderColor = "var(--border-dim)";
-            (e.currentTarget as HTMLInputElement).style.boxShadow = "none";
-          }}
-        />
-        <div className="mt-3"><ProviderStatus /></div>
+        {/* Context window bar */}
+        <ContextWindowBar />
+
+        {/* Commander name input */}
+        <div>
+          <label
+            className="block text-[9px] font-semibold uppercase px-1 mb-1.5"
+            htmlFor={`commander-name-${scope}`}
+            style={{ color: "var(--text-muted)", letterSpacing: "0.14em", fontFamily: "var(--font-code)" }}
+          >
+            Commander
+          </label>
+          <input
+            id={`commander-name-${scope}`}
+            value={commanderName}
+            onChange={(event) => setCommanderName(event.target.value)}
+            className="w-full rounded-lg px-2.5 py-2 text-[13px] transition-all duration-150"
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid var(--border-dim)",
+              color: "var(--text-primary)",
+              outline: "none",
+            }}
+            onFocus={(e) => {
+              (e.currentTarget as HTMLInputElement).style.borderColor = "rgba(0,229,160,0.35)";
+              (e.currentTarget as HTMLInputElement).style.boxShadow = "0 0 0 2px rgba(0,229,160,0.08)";
+            }}
+            onBlur={(e) => {
+              (e.currentTarget as HTMLInputElement).style.borderColor = "var(--border-dim)";
+              (e.currentTarget as HTMLInputElement).style.boxShadow = "none";
+            }}
+          />
+          <div className="mt-3"><ProviderStatus /></div>
+        </div>
       </div>
     </>
   );
