@@ -223,14 +223,16 @@ export default function Home() {
   return (
     <main
       className="flex h-[100dvh] overflow-hidden"
-      style={{ background: "var(--bg-base)" }}
+      style={{ background: "transparent", position: "relative", zIndex: 1 }}
     >
       {/* ── Sidebar ─────────────────────────────────── */}
       <aside
         className="hidden w-[248px] shrink-0 flex-col p-3 md:flex"
         style={{
-          background: "var(--bg-panel)",
-          borderRight: "1px solid var(--border-dim)",
+          background: "rgba(4, 10, 5, 0.78)",
+          borderRight: "1px solid rgba(0,229,160,0.08)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
         }}
         aria-label="Mission navigation"
       >
@@ -240,16 +242,16 @@ export default function Home() {
       {/* ── Main area ───────────────────────────────── */}
       <section
         className="flex min-w-0 flex-1 flex-col"
-        style={{ background: "var(--bg-base)" }}
+        style={{ background: "transparent" }}
       >
         {/* Header */}
         <header
           className="flex min-h-14 shrink-0 items-center justify-between gap-3 px-3 sm:px-5"
           style={{
-            borderBottom: "1px solid var(--border-dim)",
-            background: "rgba(8,9,10,0.85)",
-            backdropFilter: "blur(12px)",
-            WebkitBackdropFilter: "blur(12px)",
+            borderBottom: "1px solid rgba(0,229,160,0.08)",
+            background: "rgba(4, 10, 5, 0.82)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
           }}
         >
           <div className="flex min-w-0 items-center gap-2">
@@ -338,7 +340,7 @@ export default function Home() {
         {/* Input bar */}
         <div
           className="shrink-0 px-3 pb-[max(0.9rem,env(safe-area-inset-bottom))] pt-3 sm:px-5"
-          style={{ borderTop: "1px solid var(--border-dim)" }}
+          style={{ borderTop: "1px solid rgba(0,229,160,0.08)" }}
         >
           <CommandInputBar />
         </div>
@@ -362,8 +364,10 @@ export default function Home() {
             tabIndex={-1}
             className="flex h-[100dvh] w-[min(85vw,300px)] flex-col p-3 shadow-2xl"
             style={{
-              background: "var(--bg-panel)",
-              borderRight: "1px solid var(--border-mid)",
+              background: "rgba(4, 10, 5, 0.92)",
+              borderRight: "1px solid rgba(0,229,160,0.12)",
+              backdropFilter: "blur(24px)",
+              WebkitBackdropFilter: "blur(24px)",
             }}
           >
             <div className="flex justify-end mb-1">

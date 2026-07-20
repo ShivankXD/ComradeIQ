@@ -1,11 +1,6 @@
-import type { Metadata } from "next";
-import Link from "next/link";
+"use client";
 
-export const metadata: Metadata = {
-  title: "ComradeIQ — AI Mission Control",
-  description:
-    "A multi-agent AI command center. Give your Commander a mission — research, write, coordinate, and synthesize with a team of AI specialists.",
-};
+import Link from "next/link";
 
 const features = [
   {

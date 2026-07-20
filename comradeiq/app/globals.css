@@ -7,11 +7,11 @@
 
 :root {
   /* Core palette */
-  --bg-base:        #08090a;
-  --bg-panel:       #0d0f10;
-  --bg-surface:     #111418;
-  --bg-elevated:    #161b20;
-  --bg-overlay:     #1c2228;
+  --bg-base:        rgba(6, 9, 7, 0.55);
+  --bg-panel:       rgba(8, 11, 9, 0.72);
+  --bg-surface:     rgba(10, 14, 11, 0.68);
+  --bg-elevated:    rgba(14, 19, 15, 0.80);
+  --bg-overlay:     rgba(20, 27, 21, 0.85);
 
   /* Borders */
   --border-dim:     rgba(255,255,255,0.045);
@@ -61,14 +61,32 @@ html, body {
 
 body {
   overflow: hidden;
-  background: var(--bg-base);
-  background-image:
-    radial-gradient(ellipse 70% 50% at 15% 30%, rgba(0,229,160,0.055) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 40% at 85% 70%, rgba(61,158,255,0.04) 0%, transparent 55%);
+  /* Camo texture fills the entire viewport and never moves */
+  background-color: #07100a;
+  background-image: url('/camo-bg.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  /* Tint overlays on top of camo for depth */
+  position: relative;
   color: var(--text-primary);
   font-family: var(--font-ui);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+/* Radial accent overlay — sits above camo, below content */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 50% at 15% 30%, rgba(0,229,160,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 85% 70%, rgba(61,158,255,0.05) 0%, transparent 55%),
+    linear-gradient(rgba(0,0,0,0.38), rgba(0,0,0,0.38));
 }
 
 /* ── Scrollbars ─────────────────────────────────────── */

@@ -85,9 +85,11 @@ export function MissionConversation() {
         <div
           className="w-full rounded-3xl p-8 sm:p-12"
           style={{
-            background: "linear-gradient(160deg, var(--bg-elevated) 0%, var(--bg-surface) 100%)",
-            border: "1px solid var(--border-dim)",
-            boxShadow: "0 24px 64px rgba(0,0,0,0.28)",
+            background: "rgba(4, 12, 6, 0.78)",
+            border: "1px solid rgba(0,229,160,0.12)",
+            boxShadow: "0 24px 64px rgba(0,0,0,0.5)",
+            backdropFilter: "blur(24px)",
+            WebkitBackdropFilter: "blur(24px)",
           }}
         >
           {/* Logo mark */}
@@ -182,10 +184,12 @@ export function MissionConversation() {
           <div
             className="max-w-[85%] rounded-2xl rounded-tr-md px-4 py-3 text-[15px] leading-6"
             style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--border-mid)",
+              background: "rgba(4, 12, 6, 0.82)",
+              border: "1px solid rgba(0,229,160,0.15)",
               color: "var(--text-primary)",
-              boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.35)",
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
             }}
           >
             {objective}
