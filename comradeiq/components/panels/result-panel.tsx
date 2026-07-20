@@ -238,7 +238,6 @@ export function ResultPanel() {
     downloadInlineMarkdown();
   }
 
-  const hasPresentation = Boolean(presentationDownload);
   const downloadError = downloadState.phase === "failed" ? downloadState.message : undefined;
 
   return (
