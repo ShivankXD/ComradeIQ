@@ -49,11 +49,6 @@ export default function Home() {
     }
   }, []);
 
-  useKeyboardShortcuts([
-    { key: "k", meta: true, description: "New mission",    handler: handleNewMission },
-    { key: "/", meta: true, description: "Team controls", handler: handleOpenTeam },
-  ]);
-
   // Check on mount
   useState(() => {
     if (typeof window !== "undefined") {
