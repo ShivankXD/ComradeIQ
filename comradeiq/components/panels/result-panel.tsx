@@ -108,20 +108,28 @@ export function ResultPanel() {
   const hasPresentation = Boolean(presentationDownload);
 
   // Parse slides dynamically for high-fidelity presentation preview
-  const parsedSlides = useMemo(() => {
+  const parsedSlidesData = useMemo(() => {
     if (!hasPresentation || !result) return null;
     try {
       const start = result.indexOf("{");
       const end = result.lastIndexOf("}");
       if (start !== -1 && end !== -1 && end > start) {
-        const parsed = JSON.parse(result.substring(start, end + 1)) as { slides?: Slide[] };
-        if (Array.isArray(parsed.slides)) return parsed.slides;
+        const parsed = JSON.parse(result.substring(start, end + 1)) as { slides?: Slide[]; theme?: string };
+        if (Array.isArray(parsed.slides)) {
+          return {
+            slides: parsed.slides,
+            theme: parsed.theme || "camo",
+          };
+        }
       }
     } catch (e) {
       console.error("Failed to parse slides JSON for preview", e);
     }
     return null;
   }, [hasPresentation, result]);
+
+  const parsedSlides = parsedSlidesData?.slides ?? null;
+  const slideTheme = parsedSlidesData?.theme ?? "camo";
 
   interface Slide {
     title: string;
@@ -379,135 +387,188 @@ export function ResultPanel() {
       {/* Result content */}
       {result && (
         <div className="pt-4">
-          {parsedSlides ? (
-            <div
-              className="rounded-xl p-6"
-              style={{
-                background: "rgba(4, 10, 6, 0.7)",
-                border: "1px solid rgba(0,229,160,0.15)",
-                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)",
-              }}
-            >
-              {/* Slide header details */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                <span
-                  style={{
-                    fontFamily: "var(--font-code)",
-                    fontSize: 10,
-                    color: "var(--accent)",
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Layout: {parsedSlides[activeSlideIndex]?.layout || "insight"}
-                </span>
-                <span
-                  style={{
-                    fontFamily: "var(--font-code)",
-                    fontSize: 11,
-                    color: "var(--text-muted)",
-                  }}
-                >
-                  Slide {activeSlideIndex + 1} of {parsedSlides.length}
-                </span>
-              </div>
+          {parsedSlides ? (() => {
+            const palettes: Record<string, {
+              bg: string;
+              accent: string;
+              cardBg: string;
+              borderColor: string;
+              textColor: string;
+              subtitleColor: string;
+              takeawayBg: string;
+              takeawayBorder: string;
+            }> = {
+              camo: {
+                bg: "rgba(4, 10, 6, 0.7)",
+                accent: "var(--accent)",
+                cardBg: "rgba(0, 0, 0, 0.45)",
+                borderColor: "rgba(0,229,160,0.15)",
+                textColor: "#eef2f0",
+                subtitleColor: "var(--text-secondary)",
+                takeawayBg: "rgba(0,229,160,0.06)",
+                takeawayBorder: "var(--accent)"
+              },
+              cyberpunk: {
+                bg: "rgba(15, 6, 28, 0.7)",
+                accent: "#ff007f",
+                cardBg: "rgba(0, 0, 0, 0.55)",
+                borderColor: "rgba(255, 0, 127, 0.25)",
+                textColor: "#fce4ff",
+                subtitleColor: "#00f3ff",
+                takeawayBg: "rgba(255, 0, 127, 0.08)",
+                takeawayBorder: "#ff007f"
+              },
+              minimal: {
+                bg: "rgba(18, 18, 18, 0.7)",
+                accent: "#ffffff",
+                cardBg: "rgba(0, 0, 0, 0.5)",
+                borderColor: "rgba(255,255,255,0.15)",
+                textColor: "#ffffff",
+                subtitleColor: "#8e8e93",
+                takeawayBg: "rgba(255,255,255,0.06)",
+                takeawayBorder: "#ffffff"
+              },
+              ocean: {
+                bg: "rgba(4, 12, 26, 0.7)",
+                accent: "#00e5ff",
+                cardBg: "rgba(0, 0, 0, 0.5)",
+                borderColor: "rgba(0, 229, 255, 0.22)",
+                textColor: "#eeeffa",
+                subtitleColor: "#3d9eff",
+                takeawayBg: "rgba(0, 229, 255, 0.07)",
+                takeawayBorder: "#00e5ff"
+              }
+            };
+            const currentPalette = palettes[slideTheme] || palettes.camo;
 
-              {/* Slide Body Preview */}
+            return (
               <div
-                className="rounded-lg p-5 min-h-[220px] flex flex-col justify-between"
+                className="rounded-xl p-6"
                 style={{
-                  background: "rgba(0, 0, 0, 0.45)",
-                  border: "1px solid var(--border-dim)",
+                  background: currentPalette.bg,
+                  border: `1px solid ${currentPalette.borderColor}`,
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)",
                 }}
               >
-                <div>
-                  <h4
+                {/* Slide header details */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                  <span
                     style={{
-                      fontFamily: "var(--font-brand)",
-                      fontSize: 22,
-                      fontWeight: 700,
-                      color: "#fff",
-                      lineHeight: 1.3,
+                      fontFamily: "var(--font-code)",
+                      fontSize: 10,
+                      color: currentPalette.subtitleColor,
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
                     }}
                   >
-                    {parsedSlides[activeSlideIndex]?.title}
-                  </h4>
+                    Layout: {parsedSlides[activeSlideIndex]?.layout || "insight"}
+                  </span>
+                  <span
+                    style={{
+                      fontFamily: "var(--font-code)",
+                      fontSize: 11,
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    Slide {activeSlideIndex + 1} of {parsedSlides.length}
+                  </span>
+                </div>
 
-                  {/* Bullet points */}
-                  {parsedSlides[activeSlideIndex]?.bullets && parsedSlides[activeSlideIndex].bullets.length > 0 ? (
-                    <ul className="mt-4 space-y-2 list-disc pl-5">
-                      {parsedSlides[activeSlideIndex].bullets.map((bullet, i) => (
-                        <li key={i} style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5 }}>
-                          {bullet}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p style={{ fontSize: 13, color: "var(--text-muted)", fontStyle: "italic", marginTop: 12 }}>
-                      (Opening Slide — Title & Key Message)
-                    </p>
+                {/* Slide Body Preview */}
+                <div
+                  className="rounded-lg p-5 min-h-[220px] flex flex-col justify-between"
+                  style={{
+                    background: currentPalette.cardBg,
+                    border: "1px solid var(--border-dim)",
+                  }}
+                >
+                  <div>
+                    <h4
+                      style={{
+                        fontFamily: "var(--font-brand)",
+                        fontSize: 22,
+                        fontWeight: 700,
+                        color: "#fff",
+                        lineHeight: 1.3,
+                      }}
+                    >
+                      {parsedSlides[activeSlideIndex]?.title}
+                    </h4>
+
+                    {/* Bullet points */}
+                    {parsedSlides[activeSlideIndex]?.bullets && parsedSlides[activeSlideIndex].bullets.length > 0 ? (
+                      <ul className="mt-4 space-y-2 list-disc pl-5">
+                        {parsedSlides[activeSlideIndex].bullets.map((bullet, i) => (
+                          <li key={i} style={{ fontSize: 13, color: currentPalette.textColor, lineHeight: 1.5 }}>
+                            {bullet}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p style={{ fontSize: 13, color: "var(--text-muted)", fontStyle: "italic", marginTop: 12 }}>
+                        (Opening Slide — Title & Key Message)
+                      </p>
+                    )}
+                  {/* Key Message callout */}
+                  {parsedSlides[activeSlideIndex]?.keyMessage && (
+                    <div
+                      className="mt-6 rounded-lg p-3"
+                      style={{
+                        background: currentPalette.takeawayBg,
+                        borderLeft: `3.5px solid ${currentPalette.takeawayBorder}`,
+                      }}
+                    >
+                      <p
+                        style={{
+                          fontFamily: "var(--font-code)",
+                          fontSize: 9,
+                          fontWeight: 700,
+                          color: currentPalette.accent,
+                          letterSpacing: "0.08em",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        Key Takeaway
+                      </p>
+                      <p style={{ fontSize: 12, color: "#eef2f0", marginTop: 2, lineHeight: 1.4 }}>
+                        {parsedSlides[activeSlideIndex].keyMessage}
+                      </p>
+                    </div>
                   )}
                 </div>
 
-                {/* Key Message callout */}
-                {parsedSlides[activeSlideIndex]?.keyMessage && (
-                  <div
-                    className="mt-6 rounded-lg p-3"
+                {/* Navigation controls */}
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
+                  <button
+                    type="button"
+                    disabled={activeSlideIndex === 0}
+                    onClick={() => setActiveSlideIndex((prev) => Math.max(0, prev - 1))}
+                    className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-all disabled:opacity-30"
                     style={{
-                      background: "rgba(0,229,160,0.06)",
-                      borderLeft: "3.5px solid var(--accent)",
+                      border: "1px solid var(--border-mid)",
+                      color: "var(--text-secondary)",
+                      cursor: activeSlideIndex === 0 ? "not-allowed" : "pointer",
                     }}
                   >
-                    <p
-                      style={{
-                        fontFamily: "var(--font-code)",
-                        fontSize: 9,
-                        fontWeight: 700,
-                        color: "var(--accent)",
-                        letterSpacing: "0.08em",
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      Key Takeaway
-                    </p>
-                    <p style={{ fontSize: 12, color: "#eef2f0", marginTop: 2, lineHeight: 1.4 }}>
-                      {parsedSlides[activeSlideIndex].keyMessage}
-                    </p>
-                  </div>
-                )}
+                    ← Previous
+                  </button>
+                  <button
+                    type="button"
+                    disabled={activeSlideIndex === parsedSlides.length - 1}
+                    onClick={() => setActiveSlideIndex((prev) => Math.min(parsedSlides.length - 1, prev + 1))}
+                    className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-all disabled:opacity-30"
+                    style={{
+                      border: "1px solid var(--border-mid)",
+                      color: "var(--text-secondary)",
+                      cursor: activeSlideIndex === parsedSlides.length - 1 ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    Next →
+                  </button>
+                </div>
               </div>
-
-              {/* Navigation controls */}
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
-                <button
-                  type="button"
-                  disabled={activeSlideIndex === 0}
-                  onClick={() => setActiveSlideIndex((prev) => Math.max(0, prev - 1))}
-                  className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-all disabled:opacity-30"
-                  style={{
-                    border: "1px solid var(--border-mid)",
-                    color: "var(--text-secondary)",
-                    cursor: activeSlideIndex === 0 ? "not-allowed" : "pointer",
-                  }}
-                >
-                  ← Previous
-                </button>
-                <button
-                  type="button"
-                  disabled={activeSlideIndex === parsedSlides.length - 1}
-                  onClick={() => setActiveSlideIndex((prev) => Math.min(parsedSlides.length - 1, prev + 1))}
-                  className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-all disabled:opacity-30"
-                  style={{
-                    border: "1px solid var(--border-mid)",
-                    color: "var(--text-secondary)",
-                    cursor: activeSlideIndex === parsedSlides.length - 1 ? "not-allowed" : "pointer",
-                  }}
-                >
-                  Next →
-                </button>
-              </div>
-            </div>
-          ) : (
+            );
+          })() : (
             <div
               style={{
                 "--md-text": "var(--text-primary)",

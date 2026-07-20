@@ -391,16 +391,21 @@ export async function executeMission(missionId: string): Promise<MissionExecutio
     if (record.route.producesPresentation) {
       const final = await finalizePresentationMission(record, reports, client, context);
       const sources = mergeSources(reportSources, final.sources);
-      const deck = await buildPresentation(final.finalJson, sources);
+      const theme = record.input.missionText.includes("[THEME: cyberpunk]") ? "cyberpunk"
+                  : record.input.missionText.includes("[THEME: minimal]") ? "minimal"
+                  : record.input.missionText.includes("[THEME: ocean]") ? "ocean"
+                  : "camo";
+      const deck = await buildPresentation(final.finalJson, sources, theme);
       const artifact = await persistArtifact(record, "presentation", presentationFilename(final.finalJson.slides[0]?.title ?? "brief"), "application/vnd.openxmlformats-officedocument.presentationml.presentation", deck, context.assertActive!);
-      await updateActiveMission((current) => {
-        current.finalJson = final.finalJson;
-        current.sources = sources;
-      });
-      const presentationUrl = `/api/presentation/${record.id}`;
-      await publish("mission.result", { finalJson: final.finalJson, presentationUrl, artifacts: [artifact], sources });
+       const finalJsonWithTheme = { ...final.finalJson, theme };
+       await updateActiveMission((current) => {
+         current.finalJson = finalJsonWithTheme;
+         current.sources = sources;
+       });
+       const presentationUrl = `/api/presentation/${record.id}`;
+       await publish("mission.result", { finalJson: finalJsonWithTheme, presentationUrl, artifacts: [artifact], sources });
       await setStatus(record, "complete", record.requestId, context.assertActive);
-      return { finalJson: final.finalJson, presentationUrl, artifacts: [artifact], sources };
+      return { finalJson: finalJsonWithTheme, presentationUrl, artifacts: [artifact], sources };
     }
 
     const final = client.mode === "chat-completions" && record.route.producesMarkdown
