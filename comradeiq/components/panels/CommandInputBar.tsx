@@ -74,7 +74,6 @@ export function CommandInputBar() {
       try {
         await saveMission({ id: launched.missionId, commanderName, missionText, status: "thinking", createdAt: Date.now() });
       } catch (error) {
-        // The live mission remains usable even if local history storage is unavailable.
         console.error("Mission started but could not be saved to local history", error);
       }
     } catch (error) {
@@ -95,6 +94,8 @@ export function CommandInputBar() {
     void submit();
   }
 
+  const canSubmit = Boolean(draft.trim()) && !busy;
+
   return (
     <form onSubmit={submit} className="mx-auto w-full max-w-3xl" aria-label="Mission composer">
       <input
@@ -109,8 +110,71 @@ export function CommandInputBar() {
           event.target.value = "";
         }}
       />
-      <div className="rounded-2xl border border-white/[0.14] bg-[#303633] p-3 shadow-[0_12px_32px_rgba(0,0,0,0.18)] transition focus-within:border-[#68d9b9]/70 focus-within:shadow-[0_12px_32px_rgba(0,0,0,0.2),0_0_0_3px_rgba(16,163,127,0.1)]">
-        {attachments.length > 0 && <div className="mb-2 flex flex-wrap gap-2" aria-label="Attached files">{attachments.map((file) => <span key={`${file.name}-${file.size}`} className="flex max-w-full items-center gap-1 rounded-lg border border-white/[0.08] bg-white/[0.06] px-2 py-1 text-xs text-[#d7e0db]"><span className="truncate">{file.name}</span><span className="shrink-0 text-[#9eaaa4]">{formatBytes(file.size)}</span><button type="button" onClick={() => setAttachments((items) => items.filter((item) => item !== file))} className="ml-1 grid h-4 w-4 shrink-0 place-items-center rounded text-sm leading-none text-[#bac5bf] hover:bg-white/[0.12] hover:text-white" aria-label={`Remove ${file.name}`}>×</button></span>)}</div>}
+
+      {/* Main input container */}
+      <div
+        className="rounded-2xl p-3 transition-all duration-200"
+        style={{
+          background: "var(--bg-elevated)",
+          border: "1px solid var(--border-mid)",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.28)",
+        }}
+        onFocusCapture={(e) => {
+          if ((e.target as HTMLElement).tagName === "TEXTAREA") {
+            (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(0,229,160,0.35)";
+            (e.currentTarget as HTMLDivElement).style.boxShadow = "0 8px 32px rgba(0,0,0,0.28), 0 0 0 3px rgba(0,229,160,0.08)";
+          }
+        }}
+        onBlurCapture={(e) => {
+          if ((e.target as HTMLElement).tagName === "TEXTAREA") {
+            (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border-mid)";
+            (e.currentTarget as HTMLDivElement).style.boxShadow = "0 8px 32px rgba(0,0,0,0.28)";
+          }
+        }}
+      >
+        {/* Attachments */}
+        {attachments.length > 0 && (
+          <div className="mb-2.5 flex flex-wrap gap-1.5" aria-label="Attached files">
+            {attachments.map((file) => (
+              <span
+                key={`${file.name}-${file.size}`}
+                className="flex max-w-full items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs"
+                style={{
+                  background: "rgba(0,229,160,0.07)",
+                  border: "1px solid rgba(0,229,160,0.2)",
+                  color: "var(--text-secondary)",
+                }}
+              >
+                <span
+                  className="h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{ background: "var(--accent)" }}
+                  aria-hidden="true"
+                />
+                <span className="truncate" style={{ color: "var(--text-primary)" }}>{file.name}</span>
+                <span style={{ color: "var(--text-muted)" }}>{formatBytes(file.size)}</span>
+                <button
+                  type="button"
+                  onClick={() => setAttachments((items) => items.filter((item) => item !== file))}
+                  className="ml-0.5 grid h-4 w-4 shrink-0 place-items-center rounded text-xs leading-none transition-all"
+                  style={{ color: "var(--text-muted)" }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,80,80,0.15)";
+                    (e.currentTarget as HTMLButtonElement).style.color = "#ff6b6b";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                    (e.currentTarget as HTMLButtonElement).style.color = "var(--text-muted)";
+                  }}
+                  aria-label={`Remove ${file.name}`}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Textarea */}
         <textarea
           id="mission-input"
           data-testid="mission-composer"
@@ -119,21 +183,135 @@ export function CommandInputBar() {
           disabled={busy}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={keyDown}
-          placeholder={busy ? `${commanderName} is working...` : "Message ComradeIQ"}
+          placeholder={busy ? `${commanderName} is working…` : "Give the Commander a mission…"}
           aria-describedby="composer-help"
-          className="max-h-40 min-h-12 w-full resize-none bg-transparent px-1 py-1 text-[15px] leading-6 text-[#f4f7f5] outline-none placeholder:text-[#a2aba6] disabled:cursor-not-allowed disabled:opacity-55"
+          className="max-h-40 min-h-12 w-full resize-none bg-transparent px-1 py-1 text-[15px] leading-6 outline-none disabled:cursor-not-allowed disabled:opacity-50"
+          style={{
+            color: "var(--text-primary)",
+            caretColor: "var(--accent)",
+          }}
         />
-        <div className="mt-2 flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <button type="button" onClick={() => fileInput.current?.click()} disabled={busy || attachments.length >= maxAttachments} data-testid="add-attachment" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-lg leading-none text-[#d5ded9] transition hover:bg-white/[0.09] disabled:cursor-not-allowed disabled:opacity-45" aria-label="Add attachment" title="Add a supported attachment">+</button>
-            <button type="button" onClick={() => setUseInternet((enabled) => !enabled)} disabled={busy} data-testid="internet-toggle" aria-pressed={useInternet} className={`rounded-lg px-2.5 py-1.5 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-45 ${useInternet ? "bg-[#10a37f]/20 text-[#9ef0d5]" : "text-[#c0cbc5] hover:bg-white/[0.08]"}`}>{useInternet ? "Web on" : "Search web"}</button>
+
+        {/* Toolbar */}
+        <div className="mt-1.5 flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-1">
+            {/* Attach */}
+            <button
+              type="button"
+              onClick={() => fileInput.current?.click()}
+              disabled={busy || attachments.length >= maxAttachments}
+              data-testid="add-attachment"
+              className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-base leading-none transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-40"
+              style={{ color: "var(--text-muted)" }}
+              onMouseEnter={(e) => {
+                if (!e.currentTarget.disabled) {
+                  (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.07)";
+                  (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--text-muted)";
+              }}
+              aria-label="Add attachment"
+              title="Add a supported attachment"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+              </svg>
+            </button>
+
+            {/* Web search toggle */}
+            <button
+              type="button"
+              onClick={() => setUseInternet((enabled) => !enabled)}
+              disabled={busy}
+              data-testid="internet-toggle"
+              aria-pressed={useInternet}
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12px] font-medium transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-40"
+              style={
+                useInternet
+                  ? {
+                      background: "rgba(0,229,160,0.1)",
+                      border: "1px solid rgba(0,229,160,0.25)",
+                      color: "var(--accent)",
+                    }
+                  : {
+                      background: "transparent",
+                      border: "1px solid transparent",
+                      color: "var(--text-muted)",
+                    }
+              }
+              onMouseEnter={(e) => {
+                if (!e.currentTarget.disabled && !useInternet) {
+                  (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.05)";
+                  (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!useInternet) {
+                  (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                  (e.currentTarget as HTMLButtonElement).style.color = "var(--text-muted)";
+                }
+              }}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="2" y1="12" x2="22" y2="12" />
+                <path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
+              </svg>
+              {useInternet ? "Web on" : "Web search"}
+            </button>
           </div>
-          <button type="submit" disabled={!draft.trim() || busy} data-testid="send-mission" aria-label="Send" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#e9f0ec] text-lg font-semibold leading-none text-[#153129] transition hover:bg-white disabled:cursor-not-allowed disabled:bg-[#4f5753] disabled:text-[#89928d]">↑</button>
+
+          {/* Send button */}
+          <button
+            type="submit"
+            disabled={!canSubmit}
+            data-testid="send-mission"
+            aria-label="Send"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-xl text-sm font-bold leading-none transition-all duration-150 disabled:cursor-not-allowed"
+            style={
+              canSubmit
+                ? {
+                    background: "linear-gradient(135deg, #00e5a0 0%, #00c487 100%)",
+                    color: "#060f0a",
+                    boxShadow: "0 0 18px rgba(0,229,160,0.3)",
+                  }
+                : {
+                    background: "rgba(255,255,255,0.07)",
+                    color: "var(--text-muted)",
+                  }
+            }
+            onMouseEnter={(e) => {
+              if (canSubmit) {
+                (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 28px rgba(0,229,160,0.5)";
+                (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.05)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (canSubmit) {
+                (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 18px rgba(0,229,160,0.3)";
+                (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
+              }
+            }}
+          >
+            ↑
+          </button>
         </div>
       </div>
-      <p id="composer-help" className="mt-2 text-center text-[11px] leading-5 text-[#89948e]">Attach text, Markdown, JSON, CSV, PDF, or PNG/JPEG/WebP images (up to {maxAttachments} files, 4 MB each). Images require a compatible configured provider.</p>
+
+      <p
+        id="composer-help"
+        className="mt-2 text-center text-[10px] leading-5"
+        style={{ color: "var(--text-muted)", fontFamily: "var(--font-code)" }}
+      >
+        txt · md · json · csv · pdf · png/jpg/webp — up to {maxAttachments} files, 4 MB each
+      </p>
       <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{attachmentNotice}</p>
-      {attachmentNotice && <p className="mt-1 text-center text-[11px] text-[#c7d2cc]">{attachmentNotice}</p>}
+      {attachmentNotice && (
+        <p className="mt-1 text-center text-[11px]" style={{ color: "var(--text-secondary)" }}>{attachmentNotice}</p>
+      )}
     </form>
   );
 }

@@ -44,22 +44,48 @@ export function ProviderStatus() {
     return () => controller.abort();
   }, []);
 
-  const copy = state === "loading"
-    ? "Checking AI setup"
-    : state === "ready"
-      ? `AI configured${health?.model ? ` · ${health.model}` : ""}`
-      : state === "local-storage"
-        ? "AI configured · artifacts persist locally"
-      : state === "temporary-storage"
-        ? "AI configured · artifact storage is temporary"
-      : state === "needs-setup"
-        ? "AI setup required"
-        : "AI configuration unavailable";
-  const tone = state === "ready" || state === "local-storage" ? "bg-[#78e0c1]" : state === "temporary-storage" || state === "needs-setup" ? "bg-amber-300" : state === "unavailable" ? "bg-rose-300" : "bg-[#929b96]";
+  const copy =
+    state === "loading"
+      ? "Checking AI setup…"
+      : state === "ready"
+        ? `AI ready${health?.model ? ` · ${health.model}` : ""}`
+        : state === "local-storage"
+          ? "AI ready · local storage"
+          : state === "temporary-storage"
+            ? "AI ready · temp storage"
+            : state === "needs-setup"
+              ? "AI setup required"
+              : "AI unavailable";
+
+  const dotStyle: Record<HealthState, { bg: string; glow: string }> = {
+    loading:           { bg: "rgba(150,165,160,0.5)", glow: "none" },
+    ready:             { bg: "#00e5a0", glow: "0 0 6px rgba(0,229,160,0.7)" },
+    "local-storage":   { bg: "#00e5a0", glow: "0 0 6px rgba(0,229,160,0.7)" },
+    "temporary-storage": { bg: "#ffbe5c", glow: "0 0 6px rgba(255,190,92,0.6)" },
+    "needs-setup":     { bg: "#ffbe5c", glow: "0 0 6px rgba(255,190,92,0.6)" },
+    unavailable:       { bg: "#ff7070", glow: "0 0 6px rgba(255,112,112,0.6)" },
+  };
+
+  const { bg, glow } = dotStyle[state];
 
   return (
-    <p data-testid="provider-health" className="flex items-center gap-2 text-xs text-[#aeb8b3]" role="status" aria-live="polite" aria-atomic="true">
-      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${tone}`} aria-hidden="true" />
+    <p
+      data-testid="provider-health"
+      className="flex items-center gap-2 text-[11px]"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      style={{ color: "var(--text-muted)", fontFamily: "var(--font-code)" }}
+    >
+      <span
+        className="h-1.5 w-1.5 shrink-0 rounded-full"
+        style={{
+          background: bg,
+          boxShadow: glow,
+          animation: state === "loading" ? "pulse-dot 1.4s ease-in-out infinite" : "none",
+        }}
+        aria-hidden="true"
+      />
       <span className="truncate">{copy}</span>
     </p>
   );

@@ -21,6 +21,18 @@ const statusCopy: Record<CommanderStatus, string> = {
   error: "This mission needs attention.",
 };
 
+const statusColor: Record<CommanderStatus, string> = {
+  idle: "var(--text-muted)",
+  thinking: "var(--accent)",
+  dispatching: "var(--accent)",
+  delegating: "#3d9eff",
+  monitoring: "#3d9eff",
+  synthesizing: "var(--accent)",
+  complete: "var(--accent)",
+  cancelled: "var(--text-muted)",
+  error: "#ff8a65",
+};
+
 export function MissionConversation() {
   const objective = useCommanderStore((state) => state.objective);
   const commanderName = useCommanderStore((state) => state.name);
@@ -60,59 +72,285 @@ export function MissionConversation() {
     }
   }
 
+  /* ── Welcome / idle state ─────────────────────────── */
   if (!objective) {
     return (
-      <section className="mx-auto flex min-h-full w-full max-w-3xl items-center px-5 py-10 sm:px-8" aria-labelledby="welcome-title">
-        <div className="w-full rounded-3xl border border-white/[0.08] bg-[radial-gradient(circle_at_55%_0%,rgba(16,163,127,0.12),transparent_22rem),#222624] px-6 py-9 shadow-[0_18px_55px_rgba(0,0,0,0.16)] sm:px-10 sm:py-12">
-          <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#10a37f] text-base font-bold text-white shadow-[0_10px_24px_rgba(16,163,127,0.26)]">C</div>
-          <p className="mt-7 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#82dfc4]">Mission control</p>
-          <h1 id="welcome-title" className="mt-2 max-w-xl text-3xl font-semibold tracking-[-0.045em] text-[#f3f7f5] sm:text-4xl">Give the Commander a mission.</h1>
-          <p className="mt-4 max-w-2xl text-[15px] leading-7 text-[#bac5bf]">Ask a direct question, create a README, research with web access enabled, or prepare a presentation. ComradeIQ only shows work from the configured provider.</p>
-          <div className="mt-8 grid gap-3 text-sm text-[#d7e1dc] sm:grid-cols-3">
-            <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3"><p className="font-medium text-white">Ask</p><p className="mt-1 text-xs leading-5 text-[#aab5af]">Get a direct answer when a team is not needed.</p></div>
-            <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3"><p className="font-medium text-white">Create</p><p className="mt-1 text-xs leading-5 text-[#aab5af]">Turn a brief into a structured artifact.</p></div>
-            <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3"><p className="font-medium text-white">Coordinate</p><p className="mt-1 text-xs leading-5 text-[#aab5af]">Open Team Controls only when you want to tune specialists.</p></div>
+      <section
+        className="mx-auto flex min-h-full w-full max-w-3xl items-center px-5 py-10 sm:px-8"
+        aria-labelledby="welcome-title"
+        style={{ animation: "fadeSlideUp 0.4s ease both" }}
+      >
+        <div
+          className="w-full rounded-3xl p-8 sm:p-12"
+          style={{
+            background: "linear-gradient(160deg, var(--bg-elevated) 0%, var(--bg-surface) 100%)",
+            border: "1px solid var(--border-dim)",
+            boxShadow: "0 24px 64px rgba(0,0,0,0.28)",
+          }}
+        >
+          {/* Logo mark */}
+          <div
+            className="grid h-12 w-12 place-items-center rounded-2xl text-base font-bold text-black"
+            style={{
+              background: "linear-gradient(135deg, #00e5a0 0%, #00c487 100%)",
+              boxShadow: "0 0 28px rgba(0,229,160,0.35), inset 0 1px 0 rgba(255,255,255,0.25)",
+            }}
+          >
+            C
+          </div>
+
+          <p
+            className="mt-8 text-[10px] font-semibold uppercase"
+            style={{ color: "var(--accent)", letterSpacing: "0.2em", fontFamily: "var(--font-code)" }}
+          >
+            Mission Control
+          </p>
+
+          <h1
+            id="welcome-title"
+            className="mt-2 max-w-xl text-3xl font-bold sm:text-4xl"
+            style={{
+              color: "var(--text-primary)",
+              letterSpacing: "-0.04em",
+              fontFamily: "var(--font-brand)",
+              lineHeight: 1.15,
+            }}
+          >
+            Give the Commander<br />a mission.
+          </h1>
+
+          <p className="mt-4 max-w-lg text-[15px] leading-7" style={{ color: "var(--text-secondary)" }}>
+            Ask a direct question, create a README, research with web access enabled, or prepare a presentation. ComradeIQ only shows work from the configured provider.
+          </p>
+
+          {/* Capability cards */}
+          <div className="mt-8 grid gap-3 sm:grid-cols-3">
+            {[
+              { title: "Ask", desc: "Get a direct answer when a team is not needed." },
+              { title: "Create", desc: "Turn a brief into a structured artifact." },
+              { title: "Coordinate", desc: "Open Team Controls to tune specialists." },
+            ].map(({ title, desc }) => (
+              <div
+                key={title}
+                className="rounded-2xl p-4 transition-all duration-200"
+                style={{
+                  background: "rgba(255,255,255,0.025)",
+                  border: "1px solid var(--border-dim)",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(0,229,160,0.15)";
+                  (e.currentTarget as HTMLDivElement).style.background = "rgba(0,229,160,0.04)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border-dim)";
+                  (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.025)";
+                }}
+              >
+                <p className="font-semibold" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>{title}</p>
+                <p className="mt-1.5 text-xs leading-5" style={{ color: "var(--text-muted)" }}>{desc}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
     );
   }
 
-  const configurationHint = runtimeMode === "unavailable" ? "Live AI is not configured or is unavailable for this deployment." : "You can retry the mission after checking the configuration or request details.";
+  const configurationHint = runtimeMode === "unavailable"
+    ? "Live AI is not configured or is unavailable for this deployment."
+    : "You can retry the mission after checking the configuration or request details.";
   const needsConfiguration = runtimeMode === "unavailable" || /configur|api key|openai/i.test(error ?? "");
 
   return (
-    <section className="mx-auto w-full max-w-3xl px-5 py-8 sm:px-8" aria-label="Mission conversation">
-      <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{commanderName}: {statusCopy[status]} {error ?? ""}</p>
-      <ol className="space-y-7" aria-label="Conversation messages">
+    <section
+      className="mx-auto w-full max-w-3xl px-5 py-8 sm:px-8"
+      aria-label="Mission conversation"
+      style={{ animation: "fadeSlideUp 0.3s ease both" }}
+    >
+      <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {commanderName}: {statusCopy[status]} {error ?? ""}
+      </p>
+
+      <ol className="space-y-6" aria-label="Conversation messages">
+        {/* User message */}
         <li className="flex items-start justify-end gap-3">
-          <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-[#363b39] px-4 py-3 text-[15px] leading-6 text-[#f5f7f6] shadow-sm">{objective}</div>
-          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#555d59] text-[10px] font-semibold text-white" aria-label="Your message">You</div>
+          <div
+            className="max-w-[85%] rounded-2xl rounded-tr-md px-4 py-3 text-[15px] leading-6"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--border-mid)",
+              color: "var(--text-primary)",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+            }}
+          >
+            {objective}
+          </div>
+          <div
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[10px] font-bold"
+            style={{
+              background: "rgba(255,255,255,0.08)",
+              border: "1px solid var(--border-mid)",
+              color: "var(--text-secondary)",
+            }}
+            aria-label="Your message"
+          >
+            You
+          </div>
         </li>
+
+        {/* Commander response */}
         <li className="flex items-start gap-3">
-          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#10a37f] text-xs font-semibold text-white" aria-hidden="true">C</div>
+          <div
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-bold text-black"
+            style={{
+              background: "linear-gradient(135deg, #00e5a0 0%, #00c487 100%)",
+              boxShadow: "0 0 16px rgba(0,229,160,0.3)",
+            }}
+            aria-hidden="true"
+          >
+            C
+          </div>
+
           <article className="min-w-0 flex-1" aria-label={`${commanderName} status`}>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <p className="text-sm font-semibold text-[#f1f5f3]">{commanderName}</p>
-              <span className={`inline-flex items-center gap-1.5 text-xs ${status === "error" ? "text-amber-200" : "text-[#9ba7a1]"}`}><span className={`h-1.5 w-1.5 rounded-full ${busy ? "animate-pulse bg-[#78e0c1]" : status === "error" ? "bg-amber-300" : "bg-[#84908a]"}`} aria-hidden="true" />{status}</span>
+              <p
+                className="text-sm font-semibold"
+                style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}
+              >
+                {commanderName}
+              </p>
+              <span
+                className="inline-flex items-center gap-1.5 text-xs"
+                style={{ color: statusColor[status] }}
+              >
+                <span
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{
+                    background: statusColor[status],
+                    boxShadow: busy ? `0 0 6px ${statusColor[status]}` : "none",
+                    animation: busy ? "pulse-dot 1.4s ease-in-out infinite" : "none",
+                  }}
+                  aria-hidden="true"
+                />
+                {status}
+              </span>
             </div>
-            <p className="mt-1 text-[15px] leading-6 text-[#d0dad5]">{statusCopy[status]}</p>
-            {busy && missionId && <button type="button" onClick={() => void cancel()} disabled={actionState !== "idle"} data-testid="cancel-mission" className="mt-3 rounded-lg border border-white/[0.12] px-2.5 py-1.5 text-xs font-medium text-[#d6e1dc] transition hover:bg-white/[0.07] disabled:cursor-wait disabled:opacity-60">{actionState === "cancelling" ? "Cancelling…" : "Cancel mission"}</button>}
-            {activitySummary && busy && <details className="mt-3 max-w-xl rounded-xl border border-white/[0.09] bg-white/[0.035] px-3 py-2.5 text-sm text-[#b9c4be]"><summary className="cursor-pointer select-none text-xs font-medium text-[#dce5e0]">View activity summary</summary><p className="mt-2 whitespace-pre-wrap text-xs leading-5">{activitySummary}</p></details>}
+
+            <p
+              className="mt-1.5 text-[15px] leading-6"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              {statusCopy[status]}
+            </p>
+
+            {busy && missionId && (
+              <button
+                type="button"
+                onClick={() => void cancel()}
+                disabled={actionState !== "idle"}
+                data-testid="cancel-mission"
+                className="mt-3 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all duration-150 disabled:cursor-wait disabled:opacity-60"
+                style={{
+                  border: "1px solid var(--border-mid)",
+                  color: "var(--text-secondary)",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,80,80,0.35)";
+                  (e.currentTarget as HTMLButtonElement).style.color = "#ff8a65";
+                  (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,80,80,0.06)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-mid)";
+                  (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)";
+                  (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                }}
+              >
+                {actionState === "cancelling" ? "Cancelling…" : "Cancel mission"}
+              </button>
+            )}
+
+            {activitySummary && busy && (
+              <details
+                className="mt-3 max-w-xl rounded-xl px-3 py-2.5 text-sm"
+                style={{
+                  border: "1px solid var(--border-dim)",
+                  background: "rgba(255,255,255,0.025)",
+                  color: "var(--text-secondary)",
+                }}
+              >
+                <summary
+                  className="cursor-pointer select-none text-xs font-medium"
+                  style={{ color: "var(--text-secondary)", outline: "none" }}
+                >
+                  View activity summary
+                </summary>
+                <p
+                  className="mt-2 whitespace-pre-wrap text-xs leading-5"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  {activitySummary}
+                </p>
+              </details>
+            )}
           </article>
         </li>
       </ol>
 
+      {/* Error state */}
       {status === "error" && (
-        <section className="mt-6 rounded-2xl border border-amber-200/20 bg-amber-200/[0.06] p-4" role="alert" aria-label="Mission error">
-          <p className="text-sm font-semibold text-amber-100">The mission could not be completed</p>
-          <p className="mt-1 text-sm leading-6 text-amber-50/80">{error || configurationHint}</p>
-          {needsConfiguration && <code className="mt-3 block rounded-lg bg-black/20 px-3 py-2 text-xs text-amber-50">OPENAI_API_KEY=…</code>}
+        <section
+          className="mt-6 rounded-2xl p-4"
+          role="alert"
+          aria-label="Mission error"
+          style={{
+            border: "1px solid rgba(255,138,101,0.25)",
+            background: "rgba(255,138,101,0.05)",
+          }}
+        >
+          <p className="text-sm font-semibold" style={{ color: "#ffb39a" }}>
+            The mission could not be completed
+          </p>
+          <p className="mt-1 text-sm leading-6" style={{ color: "rgba(255,179,154,0.75)" }}>
+            {error || configurationHint}
+          </p>
+          {needsConfiguration && (
+            <code
+              className="mt-3 block rounded-lg px-3 py-2 text-xs"
+              style={{
+                background: "rgba(0,0,0,0.3)",
+                color: "#ffb39a",
+                fontFamily: "var(--font-code)",
+              }}
+            >
+              OPENAI_API_KEY=…
+            </code>
+          )}
           <div className="mt-3 flex flex-wrap gap-2">
-            {missionId && <button type="button" onClick={() => void retry()} disabled={actionState !== "idle"} data-testid="retry-mission" className="rounded-lg bg-[#e7efe9] px-3 py-1.5 text-xs font-semibold text-[#173329] transition hover:bg-white disabled:cursor-wait disabled:opacity-60">{actionState === "retrying" ? "Retrying…" : "Retry mission"}</button>}
+            {missionId && (
+              <button
+                type="button"
+                onClick={() => void retry()}
+                disabled={actionState !== "idle"}
+                data-testid="retry-mission"
+                className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-150 disabled:cursor-wait disabled:opacity-60"
+                style={{
+                  background: "linear-gradient(135deg, #00e5a0, #00c487)",
+                  color: "#060f0a",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 16px rgba(0,229,160,0.35)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.boxShadow = "none";
+                }}
+              >
+                {actionState === "retrying" ? "Retrying…" : "Retry mission"}
+              </button>
+            )}
           </div>
         </section>
       )}
+
       <ResultPanel />
       <div ref={bottomRef} />
     </section>

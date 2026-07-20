@@ -1,84 +1,148 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* ═══════════════════════════════════════════════════
+   COMRADEIQ — GLOBAL DESIGN SYSTEM
+   Award-winning command-center aesthetic
+   ═══════════════════════════════════════════════════ */
 
 :root {
-  --background: #202422;
-  --foreground: #edf2ef;
+  /* Core palette */
+  --bg-base:        #08090a;
+  --bg-panel:       #0d0f10;
+  --bg-surface:     #111418;
+  --bg-elevated:    #161b20;
+  --bg-overlay:     #1c2228;
+
+  /* Borders */
+  --border-dim:     rgba(255,255,255,0.045);
+  --border-mid:     rgba(255,255,255,0.085);
+  --border-bright:  rgba(255,255,255,0.14);
+
+  /* Accent — electric teal-green */
+  --accent:         #00e5a0;
+  --accent-dim:     #00c487;
+  --accent-deep:    #006b4a;
+  --accent-glow:    rgba(0, 229, 160, 0.22);
+  --accent-glow-sm: rgba(0, 229, 160, 0.12);
+
+  /* Accent 2 — electric blue */
+  --blue:           #3d9eff;
+  --blue-glow:      rgba(61, 158, 255, 0.18);
+
+  /* Text */
+  --text-primary:   #eef2f0;
+  --text-secondary: #a8b4ae;
+  --text-muted:     #5e6b65;
+
+  /* Fonts */
+  --font-ui:    'Space Grotesk', system-ui, sans-serif;
+  --font-brand: 'Syne', system-ui, sans-serif;
+  --font-code:  'JetBrains Mono', 'Geist Mono', monospace;
+
+  --transition: 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+
   color-scheme: dark;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--bg-base);
+  --color-foreground: var(--text-primary);
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-code);
 }
 
-html,
-body {
+/* ── Base reset ─────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
   height: 100%;
   margin: 0;
 }
 
 body {
   overflow: hidden;
-  background:
-    radial-gradient(circle at 55% -20%, rgba(28, 151, 120, 0.09), transparent 34rem),
-    var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  background: var(--bg-base);
+  background-image:
+    radial-gradient(ellipse 70% 50% at 15% 30%, rgba(0,229,160,0.055) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 85% 70%, rgba(61,158,255,0.04) 0%, transparent 55%);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
+/* ── Scrollbars ─────────────────────────────────────── */
 * {
   box-sizing: border-box;
   scrollbar-width: thin;
-  scrollbar-color: #58635d transparent;
+  scrollbar-color: rgba(0,229,160,0.2) transparent;
 }
-
-*::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
+*::-webkit-scrollbar { width: 4px; height: 4px; }
+*::-webkit-scrollbar-track { background: transparent; }
 *::-webkit-scrollbar-thumb {
-  border: 2px solid transparent;
   border-radius: 999px;
-  background: #58635d;
-  background-clip: padding-box;
+  background: rgba(0,229,160,0.18);
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,229,160,0.32);
 }
 
-button,
-input,
-textarea,
-select {
-  font: inherit;
-}
+/* ── Form elements ──────────────────────────────────── */
+button, input, textarea, select { font: inherit; }
+button:not(:disabled) { cursor: pointer; }
 
-button:not(:disabled) {
-  cursor: pointer;
-}
-
+/* ── Selection ──────────────────────────────────────── */
 ::selection {
-  background: rgba(92, 218, 182, 0.32);
+  background: rgba(0, 229, 160, 0.28);
   color: #fff;
 }
 
-/* Keep keyboard navigation apparent even where utility classes remove outlines. */
+/* ── Focus ──────────────────────────────────────────── */
 :focus-visible {
-  outline: 2px solid #8ce8cb;
-  outline-offset: 3px;
+  outline: 1.5px solid var(--accent);
+  outline-offset: 2px;
 }
 
-dialog,
-[role="dialog"] {
+/* ── Dialog ─────────────────────────────────────────── */
+dialog, [role="dialog"] {
   overscroll-behavior: contain;
 }
 
+/* ── Animations ─────────────────────────────────────── */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.85); }
+}
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--accent-glow); }
+  50%       { box-shadow: 0 0 0 6px transparent; }
+}
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes scanline {
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+/* ── Utility: neon text ─────────────────────────────── */
+.text-neon {
+  color: var(--accent);
+  text-shadow: 0 0 18px rgba(0,229,160,0.45);
+}
+
+/* ── Reduced motion ─────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  *, *::before, *::after {
     scroll-behavior: auto !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
