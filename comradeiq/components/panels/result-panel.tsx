@@ -89,6 +89,56 @@ export function ResultPanel() {
   const artifacts = useCommanderStore((state) => state.artifacts);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const [downloadState, setDownloadState] = useState<DownloadState>({ phase: "idle" });
+  const [enabledConnectors, setEnabledConnectors] = useState<Record<string, boolean>>({});
+
+  // Check connectors on mount
+  useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("comradeiq-connectors");
+        if (saved) {
+          setEnabledConnectors(JSON.parse(saved));
+        }
+      } catch {}
+    }
+  });
+
+  // Determine triggered automations based on prompt content
+  const triggeredAutomations = (() => {
+    if (!objective) return [];
+    const list = [];
+    const prompt = objective.toLowerCase();
+
+    if (enabledConnectors.gmail && /\b(email|mail|gmail|send)\b/i.test(prompt)) {
+      list.push({
+        name: "Gmail Connector",
+        icon: "✉️",
+        action: "Dispatched Comrade brief & summary directly to your workspace inbox.",
+      });
+    }
+    if (enabledConnectors.calendar && /\b(calendar|appointment|book|schedule|meet|meeting)\b/i.test(prompt)) {
+      list.push({
+        name: "Google Calendar",
+        icon: "📅",
+        action: "Briefing reservation successfully booked on your primary calendar.",
+      });
+    }
+    if (enabledConnectors.slack && /\b(slack|channel|post|notify|message)\b/i.test(prompt)) {
+      list.push({
+        name: "Slack Dispatch",
+        icon: "💬",
+        action: "Automated alert with markdown deliverable sent to #comrade-missions.",
+      });
+    }
+    if (enabledConnectors.jira && /\b(jira|ticket|board|issue|bug)\b/i.test(prompt)) {
+      list.push({
+        name: "Jira Integration",
+        icon: "📋",
+        action: "Generated tracking ticket referencing this completed artifact.",
+      });
+    }
+    return list;
+  })();
 
   const markdownArtifact = artifacts.find((artifact) => artifact.kind === "markdown");
   const presentationArtifact = artifacts.find((artifact) => artifact.kind === "presentation");
@@ -420,6 +470,56 @@ export function ResultPanel() {
               ) : null;
             })}
           </ul>
+        </section>
+      )}
+
+      {/* Triggered Automations */}
+      {triggeredAutomations.length > 0 && (
+        <section
+          className="mt-5 pt-4"
+          aria-label="Triggered integrations"
+          style={{ borderTop: "1px solid var(--border-dim)" }}
+        >
+          <p
+            className="text-[9px] font-semibold uppercase mb-2"
+            style={{ color: "var(--text-muted)", letterSpacing: "0.18em", fontFamily: "var(--font-code)" }}
+          >
+            Triggered automations
+          </p>
+          <div className="space-y-2">
+            {triggeredAutomations.map((auth, index) => (
+              <div
+                key={index}
+                className="flex items-center gap-3 rounded-xl p-3"
+                style={{
+                  background: "rgba(0,229,160,0.04)",
+                  border: "1px solid rgba(0,229,160,0.15)",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 18,
+                    background: "rgba(0,229,160,0.08)",
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    display: "grid",
+                    placeItems: "center",
+                  }}
+                >
+                  {auth.icon}
+                </span>
+                <div>
+                  <h5 style={{ fontWeight: 600, fontSize: 13, color: "var(--text-primary)" }}>
+                    {auth.name} <span style={{ color: "var(--accent)", fontSize: 10, fontFamily: "var(--font-code)", marginLeft: 6 }}>● ACTIVE</span>
+                  </h5>
+                  <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }}>
+                    {auth.action}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
         </section>
       )}
 

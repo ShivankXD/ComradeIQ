@@ -98,4 +98,15 @@ describe("classifyMissionIntent", () => {
 
     expect(route).toMatchObject({ intent: "presentation", activeRoles: [], producesPresentation: true });
   });
+
+  it("triggers presentation mode when the user explicitly requests a 'ppt'", () => {
+    const route = classify({
+      text: "Create a ppt summarizing our quarterly results.",
+    });
+
+    expect(route).toMatchObject({
+      intent: "presentation",
+      producesPresentation: true,
+    });
+  });
 });

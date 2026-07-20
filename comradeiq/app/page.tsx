@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 
 import { CommandInputBar } from "@/components/panels/CommandInputBar";
+import { ConnectorsDialog } from "@/components/panels/ConnectorsDialog";
 import { ContextWindowBar } from "@/components/panels/ContextWindowBar";
 import { MissionActivityPanel } from "@/components/panels/MissionActivityPanel";
 import { MissionConversation } from "@/components/panels/MissionConversation";
@@ -26,10 +27,39 @@ export default function Home() {
   const { missions } = useMissionHistory();
   const [activityOpen, setActivityOpen] = useState(false);
   const [teamMapOpen, setTeamMapOpen] = useState(false);
+  const [connectorsOpen, setConnectorsOpen] = useState(false);
+  const [hasActiveConnectors, setHasActiveConnectors] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const mobileNavRef = useRef<HTMLElement | null>(null);
   const mobileNavCloseRef = useRef<HTMLButtonElement | null>(null);
   const busy = inFlight.includes(status);
+
+  // Check connectors status periodically or on mount/dialog close
+  const checkConnectors = useCallback(() => {
+    try {
+      const saved = localStorage.getItem("comradeiq-connectors");
+      if (saved) {
+        const parsed = JSON.parse(saved) as Record<string, boolean>;
+        setHasActiveConnectors(Object.values(parsed).some(Boolean));
+      } else {
+        setHasActiveConnectors(false);
+      }
+    } catch {
+      setHasActiveConnectors(false);
+    }
+  }, []);
+
+  useKeyboardShortcuts([
+    { key: "k", meta: true, description: "New mission",    handler: handleNewMission },
+    { key: "/", meta: true, description: "Team controls", handler: handleOpenTeam },
+  ]);
+
+  // Check on mount
+  useState(() => {
+    if (typeof window !== "undefined") {
+      checkConnectors();
+    }
+  });
 
   useModalDialog({ open: mobileNavOpen, dialogRef: mobileNavRef, initialFocusRef: mobileNavCloseRef, onClose: () => setMobileNavOpen(false) });
 
@@ -335,6 +365,40 @@ export default function Home() {
                 Activity
               </button>
             )}
+            
+            {/* Connectors / Integrations Button */}
+            <button
+              type="button"
+              onClick={() => setConnectorsOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all duration-150"
+              style={{
+                border: "1px solid var(--border-mid)",
+                color: "var(--text-secondary)",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(0,229,160,0.3)";
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--accent)";
+                (e.currentTarget as HTMLButtonElement).style.background = "rgba(0,229,160,0.06)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-mid)";
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)";
+                (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+              }}
+              aria-haspopup="dialog"
+            >
+              <span
+                className="h-1.5 w-1.5 rounded-full"
+                style={{
+                  background: hasActiveConnectors ? "var(--accent)" : "var(--text-muted)",
+                  boxShadow: hasActiveConnectors ? "0 0 6px var(--accent)" : "none",
+                  animation: hasActiveConnectors ? "pulse-dot 1.4s ease-in-out infinite" : "none",
+                }}
+                aria-hidden="true"
+              />
+              Plugins
+            </button>
+
             <TeamStatus onOpenTeamControls={openTeamControls} />
           </div>
         </header>
@@ -400,6 +464,13 @@ export default function Home() {
         <MissionActivityPanel onClose={() => setActivityOpen(false)} onOpenTeamMap={openTeamControls} />
       )}
       <TeamMapDialog open={teamMapOpen} onClose={() => setTeamMapOpen(false)} />
+      <ConnectorsDialog
+        isOpen={connectorsOpen}
+        onClose={() => {
+          setConnectorsOpen(false);
+          checkConnectors();
+        }}
+      />
     </main>
   );
 }

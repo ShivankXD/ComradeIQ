@@ -30,7 +30,7 @@ export interface MissionRoute {
   notices: string[];
 }
 
-const PRESENTATION_TERMS = /\b(presentation|slide\s*deck|slides?|powerpoint|pptx|keynote)\b/i;
+const PRESENTATION_TERMS = /\b(presentation|slide\s*deck|slides?|powerpoint|pptx?|keynote)\b/i;
 const ARTIFACT_TERMS = /\b(readme|markdown|\.md\b|document(?:ation)?|write\s+(?:a\s+)?(?:file|doc)|generate\s+(?:a\s+)?(?:file|document)|code\s+(?:file|snippet|module)|csv|json)\b/i;
 const RESEARCH_TERMS = /\b(research|sources?|citations?|latest|current|compare|market|news|find\s+out|look\s+up)\b/i;
 const GREETING = /^(?:hi|hello|hey|good\s+(?:morning|afternoon|evening)|thanks|thank\s+you)[!,.\s]*$/i;

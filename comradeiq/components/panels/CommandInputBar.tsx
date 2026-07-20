@@ -13,7 +13,7 @@ const maxAttachments = 3;
 const maxAttachmentBytes = 4 * 1024 * 1024;
 const attachmentAccept = ".txt,.md,.markdown,.json,.csv,.pdf,image/png,image/jpeg,image/webp";
 
-const typeFor = (value: string): MissionType => /\b(presentation|slides?|powerpoint|pptx|deck)\b/i.test(value) ? "presentation" : "general";
+const typeFor = (value: string): MissionType => /\b(presentation|slides?|powerpoint|pptx?|deck)\b/i.test(value) ? "presentation" : "general";
 
 function isSupportedAttachment(file: File) {
   return ["text/plain", "text/markdown", "application/json", "text/csv", "application/pdf", "image/png", "image/jpeg", "image/webp"].includes(file.type)
