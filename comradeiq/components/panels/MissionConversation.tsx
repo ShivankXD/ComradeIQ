@@ -6,7 +6,9 @@ import { cancelMission, retryMission } from "@/lib/agents/mission-client";
 import { useMissionRealtime } from "@/lib/agents/use-mission-realtime";
 import { useCommanderStore, type CommanderStatus } from "@/lib/store";
 
+import { MissionTimeline } from "./MissionTimeline";
 import { ResultPanel } from "./result-panel";
+import { TypingIndicator } from "./TypingIndicator";
 
 const inFlight: CommanderStatus[] = ["thinking", "dispatching", "delegating", "synthesizing"];
 const statusCopy: Record<CommanderStatus, string> = {
@@ -171,7 +173,10 @@ export function MissionConversation() {
         {commanderName}: {statusCopy[status]} {error ?? ""}
       </p>
 
-      <ol className="space-y-6" aria-label="Conversation messages">
+      {/* ── Mission timeline ── */}
+      <MissionTimeline />
+
+      <ol className="space-y-6 mt-6" aria-label="Conversation messages">
         {/* User message */}
         <li className="flex items-start justify-end gap-3">
           <div
@@ -236,12 +241,27 @@ export function MissionConversation() {
               </span>
             </div>
 
-            <p
-              className="mt-1.5 text-[15px] leading-6"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              {statusCopy[status]}
-            </p>
+            {/* Typing indicator while busy, static copy otherwise */}
+            {busy ? (
+              <div className="mt-2">
+                <TypingIndicator
+                  label={
+                    status === "thinking" ? "Planning mission…" :
+                    status === "dispatching" ? "Dispatching to specialists…" :
+                    status === "delegating" ? "Specialists are working…" :
+                    status === "synthesizing" ? "Synthesizing results…" :
+                    "Working…"
+                  }
+                />
+              </div>
+            ) : (
+              <p
+                className="mt-1.5 text-[15px] leading-6"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                {statusCopy[status]}
+              </p>
+            )}
 
             {busy && missionId && (
               <button

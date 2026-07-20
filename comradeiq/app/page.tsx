@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { CommandInputBar } from "@/components/panels/CommandInputBar";
 import { MissionActivityPanel } from "@/components/panels/MissionActivityPanel";
@@ -8,6 +8,7 @@ import { MissionConversation } from "@/components/panels/MissionConversation";
 import { ProviderStatus } from "@/components/panels/ProviderStatus";
 import { TeamMapDialog } from "@/components/panels/TeamMapDialog";
 import { TeamStatus } from "@/components/panels/TeamStatus";
+import { useKeyboardShortcuts } from "@/components/panels/useKeyboardShortcuts";
 import { useModalDialog } from "@/components/panels/useModalDialog";
 import { useMissionHistory } from "@/lib/history/use-mission-history";
 import { cancelReplay, replayMission } from "@/lib/history/replay";
@@ -50,6 +51,26 @@ export default function Home() {
     void replayMission(missionId);
   }
 
+  // ── Keyboard shortcuts ──────────────────────────────
+  const handleNewMission = useCallback(() => {
+    if (busy) return;
+    cancelReplay();
+    resetMissionView();
+    setActivityOpen(false);
+    setMobileNavOpen(false);
+  }, [busy, resetMissionView]);
+
+  const handleOpenTeam = useCallback(() => {
+    if (busy) return;
+    setActivityOpen(false);
+    setTeamMapOpen(true);
+  }, [busy]);
+
+  useKeyboardShortcuts([
+    { key: "k", meta: true, description: "New mission",    handler: handleNewMission },
+    { key: "/", meta: true, description: "Team controls", handler: handleOpenTeam },
+  ]);
+
   const navigation = (scope: "desktop" | "mobile") => (
     <>
       {/* Brand */}
@@ -82,7 +103,7 @@ export default function Home() {
         onClick={startNewMission}
         disabled={busy}
         data-testid={scope === "desktop" ? "new-mission" : "mobile-new-mission"}
-        className="mt-4 group relative flex items-center gap-2.5 w-full rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-40"
+        className="mt-4 group relative flex items-center justify-between gap-2.5 w-full rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-40"
         style={{
           background: "rgba(0,229,160,0.06)",
           border: "1px solid rgba(0,229,160,0.2)",
@@ -101,14 +122,28 @@ export default function Home() {
           (e.currentTarget as HTMLButtonElement).style.boxShadow = "none";
         }}
       >
-        <span
-          className="grid h-5 w-5 shrink-0 place-items-center rounded-md text-xs font-bold text-black transition-transform duration-150 group-hover:scale-110"
-          style={{ background: "linear-gradient(135deg, #00e5a0, #00c487)" }}
-          aria-hidden="true"
-        >
-          +
+        <span className="flex items-center gap-2">
+          <span
+            className="grid h-5 w-5 shrink-0 place-items-center rounded-md text-xs font-bold text-black transition-transform duration-150 group-hover:scale-110"
+            style={{ background: "linear-gradient(135deg, #00e5a0, #00c487)" }}
+            aria-hidden="true"
+          >
+            +
+          </span>
+          New mission
         </span>
-        New mission
+        {/* Keyboard shortcut hint */}
+        <kbd
+          className="hidden shrink-0 items-center gap-0.5 rounded px-1 py-0.5 text-[9px] sm:flex"
+          style={{
+            background: "rgba(0,229,160,0.08)",
+            border: "1px solid rgba(0,229,160,0.2)",
+            color: "rgba(0,229,160,0.7)",
+            fontFamily: "var(--font-code)",
+          }}
+        >
+          ⌘K
+        </kbd>
       </button>
 
       {/* Recent Missions */}
