@@ -509,6 +509,8 @@ export function ResultPanel() {
                         (Opening Slide — Title & Key Message)
                       </p>
                     )}
+                  </div>
+
                   {/* Key Message callout */}
                   {parsedSlides[activeSlideIndex]?.keyMessage && (
                     <div
