@@ -156,16 +156,19 @@ export function toChatCompletionRequest(
   }
 
   const format = params.text?.format;
-  const responseFormat = format?.type === "json_schema"
-    ? {
-        type: "json_schema" as const,
-        json_schema: {
-          name: format.name,
-          strict: format.strict,
-          schema: format.schema,
-        },
-      }
-    : undefined;
+  const useJsonObject = Boolean(OPENAI_BASE_URL) && format?.type === "json_schema";
+  const responseFormat = useJsonObject
+    ? { type: "json_object" as const }
+    : format?.type === "json_schema"
+      ? {
+          type: "json_schema" as const,
+          json_schema: {
+            name: format.name,
+            strict: format.strict,
+            schema: format.schema,
+          },
+        }
+      : undefined;
 
   return {
     model,
