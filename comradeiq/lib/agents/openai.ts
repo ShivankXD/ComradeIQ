@@ -170,7 +170,10 @@ export function toChatCompletionRequest(
   return {
     model,
     messages,
-    max_completion_tokens: params.max_output_tokens,
+    // Generic OpenAI-compatible gateways commonly document `max_tokens`.
+    // Keep the request on that broadly supported field instead of the newer
+    // OpenAI-only `max_completion_tokens` alias.
+    max_tokens: params.max_output_tokens,
     ...(responseFormat ? { response_format: responseFormat } : {}),
   };
 }

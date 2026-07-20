@@ -27,7 +27,7 @@ describe("OpenAI-compatible Chat Completions adapter", () => {
 
     expect(request).toMatchObject({
       model: "gateway-model",
-      max_completion_tokens: 321,
+      max_tokens: 321,
       messages: [
         { role: "system", content: "Return only structured output." },
         {
