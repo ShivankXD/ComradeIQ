@@ -85,11 +85,11 @@ export function MissionConversation() {
         <div
           className="w-full rounded-3xl p-8 sm:p-12"
           style={{
-            background: "rgba(4, 12, 6, 0.78)",
+            background: "rgba(4, 8, 5, 0.58)",
             border: "1px solid rgba(0,229,160,0.12)",
-            boxShadow: "0 24px 64px rgba(0,0,0,0.5)",
-            backdropFilter: "blur(24px)",
-            WebkitBackdropFilter: "blur(24px)",
+            boxShadow: "0 24px 64px rgba(0,0,0,0.4)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
           }}
         >
           {/* Logo mark */}

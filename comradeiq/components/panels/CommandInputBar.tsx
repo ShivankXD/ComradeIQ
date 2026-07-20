@@ -115,9 +115,9 @@ export function CommandInputBar() {
       <div
         className="rounded-2xl p-3 transition-all duration-200"
         style={{
-          background: "rgba(4, 12, 6, 0.82)",
+          background: "rgba(4, 8, 5, 0.60)",
           border: "1px solid rgba(0,229,160,0.14)",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.35)",
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
         }}

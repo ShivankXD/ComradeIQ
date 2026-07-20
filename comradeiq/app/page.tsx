@@ -229,10 +229,10 @@ export default function Home() {
       <aside
         className="hidden w-[248px] shrink-0 flex-col p-3 md:flex"
         style={{
-          background: "rgba(4, 10, 5, 0.78)",
-          borderRight: "1px solid rgba(0,229,160,0.08)",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
+          background: "rgba(4, 8, 5, 0.55)",
+          borderRight: "1px solid rgba(0,229,160,0.1)",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
         }}
         aria-label="Mission navigation"
       >
@@ -248,8 +248,8 @@ export default function Home() {
         <header
           className="flex min-h-14 shrink-0 items-center justify-between gap-3 px-3 sm:px-5"
           style={{
-            borderBottom: "1px solid rgba(0,229,160,0.08)",
-            background: "rgba(4, 10, 5, 0.82)",
+            borderBottom: "1px solid rgba(0,229,160,0.1)",
+            background: "rgba(4, 8, 5, 0.60)",
             backdropFilter: "blur(20px)",
             WebkitBackdropFilter: "blur(20px)",
           }}
@@ -364,7 +364,7 @@ export default function Home() {
             tabIndex={-1}
             className="flex h-[100dvh] w-[min(85vw,300px)] flex-col p-3 shadow-2xl"
             style={{
-              background: "rgba(4, 10, 5, 0.92)",
+              background: "rgba(4, 8, 5, 0.75)",
               borderRight: "1px solid rgba(0,229,160,0.12)",
               backdropFilter: "blur(24px)",
               WebkitBackdropFilter: "blur(24px)",
