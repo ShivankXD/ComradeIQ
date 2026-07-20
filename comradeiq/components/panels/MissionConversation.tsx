@@ -9,6 +9,7 @@ import { useCommanderStore, type CommanderStatus } from "@/lib/store";
 import { MissionTimeline } from "./MissionTimeline";
 import { ResultPanel } from "./result-panel";
 import { TypingIndicator } from "./TypingIndicator";
+import { SafeMarkdown } from "./SafeMarkdown";
 
 const inFlight: CommanderStatus[] = ["thinking", "dispatching", "delegating", "synthesizing"];
 const statusCopy: Record<CommanderStatus, string> = {
@@ -44,6 +45,7 @@ export function MissionConversation() {
   const error = useCommanderStore((state) => state.error);
   const runtimeMode = useCommanderStore((state) => state.runtimeMode);
   const finalResult = useCommanderStore((state) => state.finalResult);
+  const chatHistory = useCommanderStore((state) => state.chatHistory);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [actionState, setActionState] = useState<"idle" | "cancelling" | "retrying">("idle");
   const busy = inFlight.includes(status);
@@ -179,74 +181,114 @@ export function MissionConversation() {
       <MissionTimeline />
 
       <ol className="space-y-6 mt-6" aria-label="Conversation messages">
-        {/* User message */}
-        <li className="flex items-start justify-end gap-3">
-          <div
-            className="max-w-[85%] rounded-2xl rounded-tr-md px-4 py-3 text-[15px] leading-6"
-            style={{
-              background: "rgba(4, 12, 6, 0.82)",
-              border: "1px solid rgba(0,229,160,0.15)",
-              color: "var(--text-primary)",
-              boxShadow: "0 4px 16px rgba(0,0,0,0.35)",
-              backdropFilter: "blur(16px)",
-              WebkitBackdropFilter: "blur(16px)",
-            }}
-          >
-            {objective}
-          </div>
-          <div
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[10px] font-bold"
-            style={{
-              background: "rgba(255,255,255,0.08)",
-              border: "1px solid var(--border-mid)",
-              color: "var(--text-secondary)",
-            }}
-            aria-label="Your message"
-          >
-            You
-          </div>
-        </li>
+        {chatHistory.map((turn, index) => {
+          const isUser = turn.role === "user";
+          const isJson = !isUser && turn.content.startsWith("{") && turn.content.includes("slides");
 
-        {/* Commander response */}
-        <li className="flex items-start gap-3">
-          <div
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-bold text-black"
-            style={{
-              background: "linear-gradient(135deg, #00e5a0 0%, #00c487 100%)",
-              boxShadow: "0 0 16px rgba(0,229,160,0.3)",
-            }}
-            aria-hidden="true"
-          >
-            C
-          </div>
-
-          <article className="min-w-0 flex-1" aria-label={`${commanderName} status`}>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <p
-                className="text-sm font-semibold"
-                style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}
-              >
-                {commanderName}
-              </p>
-              <span
-                className="inline-flex items-center gap-1.5 text-xs"
-                style={{ color: statusColor[status] }}
-              >
-                <span
-                  className="h-1.5 w-1.5 rounded-full"
+          if (isUser) {
+            return (
+              <li key={turn.id} className="flex items-start justify-end gap-3">
+                <div
+                  className="max-w-[85%] rounded-2xl rounded-tr-md px-4 py-3 text-[15px] leading-6"
                   style={{
-                    background: statusColor[status],
-                    boxShadow: busy ? `0 0 6px ${statusColor[status]}` : "none",
-                    animation: busy ? "pulse-dot 1.4s ease-in-out infinite" : "none",
+                    background: "rgba(4, 12, 6, 0.82)",
+                    border: "1px solid rgba(0,229,160,0.15)",
+                    color: "var(--text-primary)",
+                    boxShadow: "0 4px 16px rgba(0,0,0,0.35)",
+                    backdropFilter: "blur(16px)",
+                    WebkitBackdropFilter: "blur(16px)",
+                  }}
+                >
+                  {turn.content}
+                </div>
+                <div
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[10px] font-bold"
+                  style={{
+                    background: "rgba(255,255,255,0.08)",
+                    border: "1px solid var(--border-mid)",
+                    color: "var(--text-secondary)",
+                  }}
+                  aria-label="Your message"
+                >
+                  You
+                </div>
+              </li>
+            );
+          } else {
+            return (
+              <li key={turn.id} className="flex items-start gap-3">
+                <div
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-bold text-black"
+                  style={{
+                    background: "linear-gradient(135deg, #00e5a0 0%, #00c487 100%)",
+                    boxShadow: "0 0 16px rgba(0,229,160,0.3)",
                   }}
                   aria-hidden="true"
-                />
-                {status}
-              </span>
+                >
+                  C
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="text-sm font-semibold text-[var(--text-primary)]">{commanderName}</span>
+                    <span className="text-[10px] font-semibold text-[var(--accent)] uppercase tracking-wide">complete</span>
+                  </div>
+                  
+                  {isJson ? (
+                    <div style={{ fontSize: 13, color: "var(--text-muted)", fontStyle: "italic" }}>
+                      (Presentation slide deck generated successfully. Review and download via the control deck below.)
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        fontSize: 14,
+                        color: "var(--text-secondary)",
+                        lineHeight: 1.5,
+                        "--md-text": "var(--text-primary)",
+                        "--md-muted": "var(--text-secondary)",
+                        "--md-accent": "var(--accent)",
+                        "--md-border": "var(--border-dim)",
+                        "--md-code-bg": "var(--bg-overlay)",
+                      } as React.CSSProperties}
+                    >
+                      <SafeMarkdown content={turn.content} />
+                    </div>
+                  )}
+                </div>
+              </li>
+            );
+          }
+        })}
+
+        {/* Active thinking turn */}
+        {chatHistory.length > 0 && chatHistory.at(-1)?.role === "user" && (
+          <li className="flex items-start gap-3">
+            <div
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-bold text-black"
+              style={{
+                background: "linear-gradient(135deg, #00e5a0 0%, #00c487 100%)",
+                boxShadow: "0 0 16px rgba(0,229,160,0.3)",
+              }}
+              aria-hidden="true"
+            >
+              C
             </div>
 
-            {/* Typing indicator while busy, static copy otherwise */}
-            {busy ? (
+            <article className="min-w-0 flex-1" aria-label={`${commanderName} status`}>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <p className="text-sm font-semibold" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>{commanderName}</p>
+                <span className="inline-flex items-center gap-1.5 text-xs" style={{ color: statusColor[status] }}>
+                  <span
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{
+                      background: statusColor[status],
+                      boxShadow: busy ? `0 0 6px ${statusColor[status]}` : "none",
+                      animation: busy ? "pulse-dot 1.4s ease-in-out infinite" : "none",
+                    }}
+                    aria-hidden="true"
+                  />
+                  {status}
+                </span>
+              </div>
               <div className="mt-2">
                 <TypingIndicator
                   label={
@@ -258,66 +300,53 @@ export function MissionConversation() {
                   }
                 />
               </div>
-            ) : (
-              <p
-                className="mt-1.5 text-[15px] leading-6"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                {statusCopy[status]}
-              </p>
-            )}
 
-            {busy && missionId && (
-              <button
-                type="button"
-                onClick={() => void cancel()}
-                disabled={actionState !== "idle"}
-                data-testid="cancel-mission"
-                className="mt-3 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all duration-150 disabled:cursor-wait disabled:opacity-60"
-                style={{
-                  border: "1px solid var(--border-mid)",
-                  color: "var(--text-secondary)",
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,80,80,0.35)";
-                  (e.currentTarget as HTMLButtonElement).style.color = "#ff8a65";
-                  (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,80,80,0.06)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-mid)";
-                  (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)";
-                  (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-                }}
-              >
-                {actionState === "cancelling" ? "Cancelling…" : "Cancel mission"}
-              </button>
-            )}
+              {busy && missionId && (
+                <button
+                  type="button"
+                  onClick={() => void cancel()}
+                  disabled={actionState !== "idle"}
+                  data-testid="cancel-mission"
+                  className="mt-3 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all duration-150 disabled:cursor-wait disabled:opacity-60"
+                  style={{
+                    border: "1px solid var(--border-mid)",
+                    color: "var(--text-secondary)",
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,80,80,0.35)";
+                    (e.currentTarget as HTMLButtonElement).style.color = "#ff8a65";
+                    (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,80,80,0.06)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-mid)";
+                    (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)";
+                    (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                  }}
+                >
+                  {actionState === "cancelling" ? "Cancelling…" : "Cancel mission"}
+                </button>
+              )}
 
-            {activitySummary && busy && (
-              <details
-                className="mt-3 max-w-xl rounded-xl px-3 py-2.5 text-sm"
-                style={{
-                  border: "1px solid var(--border-dim)",
-                  background: "rgba(255,255,255,0.025)",
-                  color: "var(--text-secondary)",
-                }}
-              >
-                <summary
-                  className="cursor-pointer select-none text-xs font-medium"
-                  style={{ color: "var(--text-secondary)", outline: "none" }}
+              {activitySummary && busy && (
+                <details
+                  className="mt-3 max-w-xl rounded-xl px-3 py-2.5 text-sm"
+                  style={{
+                    border: "1px solid var(--border-dim)",
+                    background: "rgba(255,255,255,0.025)",
+                    color: "var(--text-secondary)",
+                  }}
                 >
-                  View activity summary
-                </summary>
-                <p
-                  className="mt-2 whitespace-pre-wrap text-xs leading-5"
-                  style={{ color: "var(--text-muted)" }}
-                >
-                  {activitySummary}
-                </p>
-              </details>
-            )}
-          </article>
-        </li>
+                  <summary className="cursor-pointer select-none text-xs font-medium" style={{ color: "var(--text-secondary)", outline: "none" }}>
+                    View activity summary
+                  </summary>
+                  <p className="mt-2 whitespace-pre-wrap text-xs leading-5" style={{ color: "var(--text-muted)" }}>
+                    {activitySummary}
+                  </p>
+                </details>
+              )}
+            </article>
+          </li>
+        )}
       </ol>
 
       {/* Error state */}

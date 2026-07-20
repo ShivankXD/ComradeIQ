@@ -254,11 +254,19 @@ async function finalizePresentationMission(
     max_output_tokens: client.mode === "chat-completions" ? Math.min(2_200, Math.max(500, 130 + slideCount * 155)) : 6_000,
   }, context);
   try {
-    const finalJson = sanitizePresentation(JSON.parse(response.output_text) as PresentationJson);
+    const rawText = response.output_text.trim();
+    // Defensive extraction: find first '{' and last '}' to strip any preamble or markdown ticks
+    const start = rawText.indexOf("{");
+    const end = rawText.lastIndexOf("}");
+    if (start === -1 || end === -1 || end <= start) {
+      throw new Error("No JSON object found in response");
+    }
+    const cleanJson = rawText.substring(start, end + 1);
+    const finalJson = sanitizePresentation(JSON.parse(cleanJson) as PresentationJson);
     assertPresentationQuality(finalJson, slideCount);
     return { finalJson, sources: sourcesFromResponse(response) };
   } catch (error) {
-    throw new RuntimeError("provider_rejected", "The AI provider returned an invalid presentation. Please retry.", { status: 502, retryable: true, cause: error });
+    throw new RuntimeError("provider_rejected", "The AI provider returned an invalid presentation structure. Please retry.", { status: 502, retryable: true, cause: error });
   }
 }
 

@@ -44,6 +44,13 @@ export interface MissionArtifact {
   url: string;
 }
 
+export interface ChatTurn {
+  id: string;
+  role: "user" | "commander";
+  content: string;
+  timestamp: number;
+}
+
 export interface CommanderState {
   name: string;
   missionId?: string;
@@ -60,6 +67,7 @@ export interface CommanderState {
   presentationUrl?: string;
   sources: MissionSource[];
   artifacts: MissionArtifact[];
+  chatHistory: ChatTurn[];
   error?: string;
   runtimeMode: "live" | "unavailable" | "unknown";
 }
@@ -89,6 +97,8 @@ interface CommanderActions {
   setRuntimeMode: (runtimeMode: CommanderState["runtimeMode"]) => void;
   beginReplay: (missionId: string) => void;
   endReplay: () => void;
+  addChatTurn: (turn: ChatTurn) => void;
+  clearChatHistory: () => void;
   resetMissionView: () => void;
   reset: () => void;
 }
@@ -112,6 +122,7 @@ const initialState: CommanderState = {
   busMessages: [],
   sources: [],
   artifacts: [],
+  chatHistory: [],
   runtimeMode: "unknown",
 };
 
@@ -180,7 +191,25 @@ export const useCommanderStore = create<CommanderStore>((set) => ({
   postMessage: (message) => set((state) => ({
     busMessages: [...state.busMessages, message],
   })),
-  setFinalResult: (finalResult) => set({ finalResult }),
+  setFinalResult: (finalResult) => set((state) => {
+    // Avoid duplicates by checking if the last turn is already from the commander
+    const lastTurn = state.chatHistory.at(-1);
+    if (finalResult && lastTurn?.role !== "commander") {
+      return {
+        finalResult,
+        chatHistory: [
+          ...state.chatHistory,
+          {
+            id: `commander-${Date.now()}`,
+            role: "commander" as const,
+            content: finalResult,
+            timestamp: Date.now(),
+          },
+        ],
+      };
+    }
+    return { finalResult };
+  }),
   setPresentationUrl: (presentationUrl) => set({ presentationUrl }),
   setSources: (sources) => set({ sources }),
   setArtifacts: (artifacts) => set({ artifacts }),
@@ -188,6 +217,10 @@ export const useCommanderStore = create<CommanderStore>((set) => ({
   setRuntimeMode: (runtimeMode) => set({ runtimeMode }),
   beginReplay: (replayMissionId) => set({ replayMissionId }),
   endReplay: () => set({ replayMissionId: undefined }),
+  addChatTurn: (turn) => set((state) => ({
+    chatHistory: [...state.chatHistory, turn],
+  })),
+  clearChatHistory: () => set({ chatHistory: [] }),
   // Clears everything a mission draws on the canvas, without touching the
   // Comrade connect/disconnect topology the user has set up.
   resetMissionView: () => set((state) => ({
@@ -200,6 +233,7 @@ export const useCommanderStore = create<CommanderStore>((set) => ({
     presentationUrl: undefined,
     sources: [],
     artifacts: [],
+    chatHistory: [],
     error: undefined,
     runtimeMode: "unknown",
     status: "monitoring",

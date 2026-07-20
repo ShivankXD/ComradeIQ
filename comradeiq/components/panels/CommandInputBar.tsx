@@ -62,6 +62,27 @@ export function CommandInputBar() {
     event?.preventDefault();
     const missionText = draft.trim();
     if (!missionText || busy) return;
+
+    const store = useCommanderStore.getState();
+    const isContinuing = store.chatHistory.length > 0;
+
+    // 1. Add user turn to chat history
+    store.addChatTurn({
+      id: `user-${Date.now()}`,
+      role: "user" as const,
+      content: missionText,
+      timestamp: Date.now(),
+    });
+
+    // 2. Compile text context if continuing the same chat
+    let compiledPrompt = missionText;
+    if (isContinuing) {
+      const contextParts = store.chatHistory
+        .slice(0, -1) // Exclude the latest user turn which is compiledPrompt
+        .map((turn) => `${turn.role === "user" ? "User" : "Commander"}: ${turn.content}`);
+      compiledPrompt = `Previous conversation:\n${contextParts.join("\n")}\n\nLatest instruction: ${missionText}`;
+    }
+
     const clientMissionId = crypto.randomUUID();
     const selectedAttachments = attachments;
     setDraft("");
@@ -70,7 +91,10 @@ export function CommandInputBar() {
     cancelReplay();
 
     try {
-      const launched = await launchMission(commanderName, missionText, typeFor(missionText), clientMissionId, { useInternet, attachments: selectedAttachments });
+      // Launch mission with compiledPrompt so the AI understands previous questions/turns
+      const launched = await launchMission(commanderName, compiledPrompt, typeFor(missionText), clientMissionId, { useInternet, attachments: selectedAttachments });
+      // Keep track of the original user prompt for UI display in store
+      useCommanderStore.getState().setObjective(missionText);
       try {
         await saveMission({ id: launched.missionId, commanderName, missionText, status: "thinking", createdAt: Date.now() });
       } catch (error) {
