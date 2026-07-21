@@ -126,6 +126,9 @@ export async function runComrade(
   }
   const result: ComradeResult = { comradeId: input.comradeId, role: input.role, output, sources: sourcesFromResponse(response) };
 
+  // Surface each specialist's actual contribution so the UI can reveal the
+  // real inter-agent work (transparency), capped for a compact preview.
+  await publish("comrade.output.delta", { comradeId: input.comradeId, token: output.slice(0, 900) });
   await publish("comrade.status", { comradeId: input.comradeId, status: "done" });
   await publish("bus.message", activityMessage(input.role, "done", input.missionId, input.commanderName));
   return result;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useCommanderStore, type BusMessage, type CommanderStatus } from "@/lib/store";
 
@@ -18,6 +18,8 @@ interface ConsoleLine {
   prefix: string;
   text: string;
   tone: Tone;
+  /** Set on an agent's "done" line so its real output can be revealed on click. */
+  agentId?: string;
 }
 
 const toneColor: Record<Tone, string> = {
@@ -45,7 +47,7 @@ function lineFor(message: BusMessage): ConsoleLine {
       return { ...base, prefix: "⟩", text: `dispatch --agent ${message.to}`, tone: "accent" };
     case "status": {
       const { word, tone } = statusWord(message.content);
-      return { ...base, prefix: `[${message.from}]`, text: word, tone };
+      return { ...base, prefix: `[${message.from}]`, text: word, tone, agentId: word === "done" ? message.from : undefined };
     }
     case "result":
       return { ...base, prefix: "⟩", text: message.content, tone: "ok" };
@@ -69,7 +71,9 @@ export function AgentConsole() {
   const objective = useCommanderStore((state) => state.objective);
   const status = useCommanderStore((state) => state.status);
   const messages = useCommanderStore((state) => state.busMessages);
+  const comrades = useCommanderStore((state) => state.comrades);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const busy = busyStatuses.includes(status);
 
@@ -131,12 +135,36 @@ export function AgentConsole() {
         className="px-4 py-3 overflow-y-auto"
         style={{ maxHeight: 210, fontFamily: "var(--font-code)", fontSize: 11.5, lineHeight: 1.7 }}
       >
-        {lines.map((line) => (
-          <div key={line.key} className="flex gap-2" style={{ animation: "fadeSlideUp 0.25s ease both" }}>
-            <span style={{ color: toneColor[line.tone], flexShrink: 0, opacity: line.tone === "muted" ? 0.7 : 1 }}>{line.prefix}</span>
-            <span style={{ color: line.tone === "prompt" ? "var(--text-primary)" : toneColor[line.tone], wordBreak: "break-word" }}>{line.text}</span>
-          </div>
-        ))}
+        {lines.map((line) => {
+          const output = line.agentId ? comrades[line.agentId]?.result?.trim() : undefined;
+          const canExpand = Boolean(output);
+          const isOpen = expanded[line.key];
+          return (
+            <div key={line.key} style={{ animation: "fadeSlideUp 0.25s ease both" }}>
+              <div
+                className="flex gap-2"
+                style={{ cursor: canExpand ? "pointer" : "default" }}
+                onClick={canExpand ? () => setExpanded((prev) => ({ ...prev, [line.key]: !prev[line.key] })) : undefined}
+              >
+                <span style={{ color: toneColor[line.tone], flexShrink: 0, opacity: line.tone === "muted" ? 0.7 : 1 }}>{line.prefix}</span>
+                <span style={{ color: line.tone === "prompt" ? "var(--text-primary)" : toneColor[line.tone], wordBreak: "break-word" }}>{line.text}</span>
+                {canExpand && (
+                  <span style={{ color: "var(--text-muted)", opacity: 0.7 }}>
+                    {isOpen ? "▾ hide output" : "▸ view output"}
+                  </span>
+                )}
+              </div>
+              {canExpand && isOpen && (
+                <pre
+                  className="mt-1 mb-1 whitespace-pre-wrap rounded-md px-3 py-2"
+                  style={{ marginLeft: 18, background: "rgba(0,229,160,0.04)", border: "1px solid rgba(0,229,160,0.12)", color: "var(--text-secondary)", fontSize: 10.5, lineHeight: 1.6, maxHeight: 160, overflowY: "auto" }}
+                >
+                  {output}
+                </pre>
+              )}
+            </div>
+          );
+        })}
         {/* Blinking cursor while the mission is live */}
         {busy && (
           <div className="flex gap-2">

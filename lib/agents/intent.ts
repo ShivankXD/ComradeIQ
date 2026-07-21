@@ -46,12 +46,11 @@ export function classifyMissionIntent(input: IntentInput): MissionRoute {
   const isArtifact = ARTIFACT_TERMS.test(text);
   const asksForResearch = RESEARCH_TERMS.test(text);
   const wantsWeb = asksForResearch && input.capabilities.webEnabled;
-  const artifactDeliveryRoles: ComradeRole[] = input.capabilities.compactDelivery
-    ? ["writer"]
-    : ["writer", "formatter", "critic", "assembler"];
-  const presentationDeliveryRoles: ComradeRole[] = input.capabilities.compactDelivery
-    ? []
-    : ["writer", "formatter", "critic", "assembler"];
+  // The full specialist pipeline runs for document/slide missions so the whole
+  // team visibly participates. Per-role token budgets stay compact (see
+  // comrade.outputBudget), keeping the fast provider well within its deadline.
+  const artifactDeliveryRoles: ComradeRole[] = ["writer", "formatter", "critic", "assembler"];
+  const presentationDeliveryRoles: ComradeRole[] = ["writer", "formatter", "critic", "assembler"];
   const notices: string[] = [];
 
   if (!input.capabilities.providerAvailable) {
@@ -70,7 +69,7 @@ export function classifyMissionIntent(input: IntentInput): MissionRoute {
   if (isPresentation) {
     return {
       intent: "presentation",
-      activeRoles: [...(wantsWeb ? ["researcher" as const] : []), ...presentationDeliveryRoles],
+      activeRoles: ["researcher", ...presentationDeliveryRoles],
       producesMarkdown: false,
       producesPresentation: true,
       usesWeb: wantsWeb,
@@ -82,7 +81,7 @@ export function classifyMissionIntent(input: IntentInput): MissionRoute {
   if (isArtifact) {
     return {
       intent: "artifact",
-      activeRoles: [...(wantsWeb ? ["researcher" as const] : []), ...artifactDeliveryRoles],
+      activeRoles: ["researcher", ...artifactDeliveryRoles],
       producesMarkdown: true,
       producesPresentation: false,
       usesWeb: wantsWeb,

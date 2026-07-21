@@ -78,12 +78,6 @@ function readyImages(record: MissionRecord) {
   return record.input.attachments.flatMap((attachment) => attachment.kind === "image" && attachment.status === "ready" && attachment.imageDataUrl ? [attachment.imageDataUrl] : []);
 }
 
-function compactMarkdownResult(reports: Record<string, ComradeResult>) {
-  const writer = reports.writer;
-  if (!writer?.output.trim()) return undefined;
-  return { finalResult: writer.output.trim(), sources: writer.sources };
-}
-
 function mergeSources(...groups: MissionSource[][]) {
   const known = new Map<string, MissionSource>();
   for (const group of groups) for (const source of group) known.set(source.url, source);
@@ -408,9 +402,10 @@ export async function executeMission(missionId: string): Promise<MissionExecutio
       return { finalJson: finalJsonWithTheme, presentationUrl, artifacts: [artifact], sources };
     }
 
-    const final = client.mode === "chat-completions" && record.route.producesMarkdown
-      ? compactMarkdownResult(reports) ?? await finalizeTextMission(record, reports, client, context)
-      : await finalizeTextMission(record, reports, client, context);
+    // Always synthesize the final deliverable from every specialist report so
+    // the reviewed/assembled pipeline output — not just the writer's raw draft —
+    // is what the user receives.
+    const final = await finalizeTextMission(record, reports, client, context);
     const sources = mergeSources(reportSources, final.sources);
     let artifact: MissionArtifactSummary | undefined;
     if (record.route.producesMarkdown) {
