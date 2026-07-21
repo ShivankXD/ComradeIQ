@@ -13,6 +13,7 @@
   "dependencies": {
     "@vercel/blob": "^2.6.1",
     "ably": "^2.24.0",
+    "chess.js": "^1.4.0",
     "framer-motion": "^12.42.2",
     "next": "15.5.20",
     "openai": "^6.47.0",

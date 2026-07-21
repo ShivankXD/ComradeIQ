@@ -44,11 +44,17 @@ export interface MissionArtifact {
   url: string;
 }
 
+/** An interactive widget rendered inside a commander chat turn (games, media). */
+export type ChatWidget =
+  | { type: "chess" }
+  | { type: "video"; videoId: string; title?: string; query: string };
+
 export interface ChatTurn {
   id: string;
   role: "user" | "commander";
   content: string;
   timestamp: number;
+  widget?: ChatWidget;
 }
 
 export interface CommanderState {
@@ -93,6 +99,7 @@ interface CommanderActions {
   updateComrade: (id: string, update: Partial<ComradeState>) => void;
   toggleComradeConnection: (id: string) => boolean;
   postMessage: (message: BusMessage) => void;
+  clearBusMessages: () => void;
   setFinalResult: (result?: string) => void;
   setPresentationUrl: (presentationUrl?: string) => void;
   setSources: (sources: MissionSource[]) => void;
@@ -194,9 +201,13 @@ export const useCommanderStore = create<CommanderStore>((set) => ({
 
     return didToggle;
   },
-  postMessage: (message) => set((state) => ({
-    busMessages: [...state.busMessages, message],
-  })),
+  postMessage: (message) => set((state) => (
+    // Dedupe: SSE reconnect/snapshot replay can deliver the same event twice.
+    state.busMessages.some((existing) => existing.id === message.id)
+      ? state
+      : { busMessages: [...state.busMessages, message] }
+  )),
+  clearBusMessages: () => set({ busMessages: [] }),
   setFinalResult: (finalResult) => set((state) => {
     // Avoid duplicates by checking if the last turn is already from the commander
     const lastTurn = state.chatHistory.at(-1);

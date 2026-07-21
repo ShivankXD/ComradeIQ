@@ -8,7 +8,9 @@ import { useCommanderStore, type CommanderStatus } from "@/lib/store";
 
 import { AgentConsole } from "./AgentConsole";
 import { AgentGraph } from "./AgentGraph";
+import { ChessGame } from "./ChessGame";
 import { MissionTimeline } from "./MissionTimeline";
+import { VideoEmbed } from "./VideoEmbed";
 import { ResultPanel } from "./result-panel";
 import { TypingIndicator } from "./TypingIndicator";
 import { SafeMarkdown } from "./SafeMarkdown";
@@ -358,6 +360,30 @@ export function MissionConversation() {
         {chatHistory.map((turn) => {
           const isUser = turn.role === "user";
           const isJson = !isUser && turn.content.startsWith("{") && turn.content.includes("slides");
+
+          if (turn.widget) {
+            return (
+              <li key={turn.id} className="flex items-start gap-3">
+                <div
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-bold text-black"
+                  style={{ background: "linear-gradient(135deg, #00e5a0 0%, #00c487 100%)", boxShadow: "0 0 16px rgba(0,229,160,0.3)" }}
+                  aria-hidden="true"
+                >
+                  C
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="mb-1.5 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{commanderName}</p>
+                  {turn.content && (
+                    <p className="mb-2 text-sm" style={{ color: "var(--text-secondary)", lineHeight: 1.5 }}>{turn.content}</p>
+                  )}
+                  {turn.widget.type === "chess" && <ChessGame />}
+                  {turn.widget.type === "video" && (
+                    <VideoEmbed videoId={turn.widget.videoId} title={turn.widget.title} query={turn.widget.query} />
+                  )}
+                </div>
+              </li>
+            );
+          }
 
           if (isUser) {
             return (

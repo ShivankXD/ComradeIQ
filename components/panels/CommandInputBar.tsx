@@ -6,7 +6,7 @@ import { launchMission } from "@/lib/agents/mission-client";
 import { saveMission } from "@/lib/history/db";
 import { flushEvents } from "@/lib/history/recorder";
 import { cancelReplay } from "@/lib/history/replay";
-import { useCommanderStore, type CommanderStatus, type MissionType } from "@/lib/store";
+import { useCommanderStore, type ChatWidget, type CommanderStatus, type MissionType } from "@/lib/store";
 
 const inFlight: CommanderStatus[] = ["thinking", "dispatching", "delegating", "monitoring", "synthesizing"];
 const maxAttachments = 3;
@@ -14,6 +14,18 @@ const maxAttachmentBytes = 4 * 1024 * 1024;
 const attachmentAccept = ".txt,.md,.markdown,.json,.csv,.pdf,image/png,image/jpeg,image/webp";
 
 const typeFor = (value: string): MissionType => /\b(presentation|slides?|powerpoint|pptx?|deck)\b/i.test(value) ? "presentation" : "general";
+
+// Interactive chat commands that open a widget instead of running a mission.
+const CHESS_CMD = /\b(?:play|start|begin|game of)\s+chess\b|\bchess\s+(?:game|match|with\s+me)\b|let'?s\s+play\s+chess|^\s*chess\s*$/i;
+const VIDEO_CMD = /\b(?:show|find|play|search|get|watch|pull\s+up)\b[^.?!]*\bvideos?\b|\bvideos?\s+(?:of|about|on|for)\b|\byoutube\b|\btrailer\b|\bmusic\s+video\b/i;
+
+function extractVideoQuery(text: string): string {
+  let q = text.replace(/\b(?:please|hey|can you|could you|would you|i want|i'd like|give me)\b/gi, " ");
+  q = q.replace(/\b(?:show|find|play|search(?:\s+for)?|get|watch|pull\s+up)\b/gi, " ");
+  q = q.replace(/\b(?:me|us)?\s*(?:a|an|the)?\s*(?:youtube\s*)?(?:music\s*)?videos?\s*(?:of|about|on|for|showing)?\b/gi, " ");
+  q = q.replace(/[?.!]+\s*$/g, "").replace(/\s+/g, " ").trim();
+  return q || text;
+}
 
 function isSupportedAttachment(file: File) {
   return ["text/plain", "text/markdown", "application/json", "text/csv", "application/pdf", "image/png", "image/jpeg", "image/webp"].includes(file.type)
@@ -138,10 +150,44 @@ export function CommandInputBar() {
     }
   }
 
+  function openWidgetTurn(text: string, widgetTurn: { content: string; widget?: ChatWidget }) {
+    const store = useCommanderStore.getState();
+    cancelReplay();
+    store.setObjective(text);
+    store.setStatus("idle");
+    store.addChatTurn({ id: `user-${Date.now()}`, role: "user", content: text, timestamp: Date.now() });
+    store.addChatTurn({ id: `w-${Date.now()}`, role: "commander", content: widgetTurn.content, timestamp: Date.now(), widget: widgetTurn.widget });
+    setDraft("");
+  }
+
+  function openChess(text: string) {
+    openWidgetTurn(text, { content: "Challenge accepted. You are White, I am Black — make your move, Commander.", widget: { type: "chess" } });
+  }
+
+  async function openVideo(text: string) {
+    const query = extractVideoQuery(text);
+    openWidgetTurn(text, { content: `Searching for a video: “${query}”…` });
+    try {
+      const res = await fetch("/api/video-search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query }) });
+      const data = (await res.json().catch(() => ({}))) as { videoId?: string; title?: string };
+      const store = useCommanderStore.getState();
+      if (res.ok && data.videoId) {
+        store.addChatTurn({ id: `video-${Date.now()}`, role: "commander", content: "", timestamp: Date.now(), widget: { type: "video", videoId: data.videoId, title: data.title, query } });
+      } else {
+        store.addChatTurn({ id: `video-fail-${Date.now()}`, role: "commander", content: `I couldn't find a video for “${query}”. Try rephrasing your request.`, timestamp: Date.now() });
+      }
+    } catch {
+      useCommanderStore.getState().addChatTurn({ id: `video-err-${Date.now()}`, role: "commander", content: "Video search failed. Please try again.", timestamp: Date.now() });
+    }
+  }
+
   async function submit(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
     const missionText = draft.trim();
     if (!missionText || busy) return;
+
+    if (CHESS_CMD.test(missionText)) { openChess(missionText); return; }
+    if (VIDEO_CMD.test(missionText)) { void openVideo(missionText); return; }
 
     if (typeFor(missionText) === "presentation") {
       setPendingPrompt(missionText);

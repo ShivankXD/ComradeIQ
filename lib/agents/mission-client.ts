@@ -55,6 +55,7 @@ export async function launchMission(
   store.setMissionType(missionType);
   store.clearThinking();
   store.clearComradeActivity();
+  store.clearBusMessages();
   store.setFinalResult(undefined);
   store.setPresentationUrl(undefined);
   store.setSources([]);
@@ -151,6 +152,7 @@ export async function retryMission(missionId: string) {
   store.setMissionId(payload?.missionId ?? missionId);
   store.clearThinking();
   store.clearComradeActivity();
+  store.clearBusMessages();
   store.setFinalResult(undefined);
   store.setPresentationUrl(undefined);
   store.setSources([]);
