@@ -15,16 +15,31 @@ function envInteger(name: string, fallback: number, min: number, max: number) {
   return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
 }
 
-export const OPENAI_MODEL = process.env.OPENAI_MODEL?.trim() || (process.env.GROQ_API_KEY?.trim() ? "llama-3.3-70b-versatile" : DEFAULT_OPENAI_MODEL);
+function getRawApiKey() {
+  return (process.env.OPENAI_API_KEY || process.env.GROQ_API_KEY)?.trim() || "";
+}
+
+export function isGroqKey() {
+  const key = getRawApiKey();
+  return Boolean(process.env.GROQ_API_KEY?.trim()) || key.startsWith("gsk_");
+}
+
+export const OPENAI_MODEL =
+  process.env.OPENAI_MODEL?.trim() ||
+  (isGroqKey() ? "llama-3.3-70b-versatile" : DEFAULT_OPENAI_MODEL);
+
 export const OPENAI_VISION_MODEL = process.env.OPENAI_VISION_MODEL?.trim();
-export const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL?.trim() || (process.env.GROQ_API_KEY?.trim() ? "https://api.groq.com/openai/v1" : undefined);
+
+export const OPENAI_BASE_URL =
+  process.env.OPENAI_BASE_URL?.trim() ||
+  (isGroqKey() ? "https://api.groq.com/openai/v1" : undefined);
 
 /**
  * Official OpenAI uses Responses by default. Gateways like Groq or custom base URLs that document only the
  * Chat Completions protocol must use chat-completions mode.
  */
 export function openAIApiMode(): OpenAIApiMode {
-  if (process.env.GROQ_API_KEY?.trim() || OPENAI_BASE_URL) return "chat-completions";
+  if (isGroqKey() || OPENAI_BASE_URL) return "chat-completions";
   return process.env.OPENAI_API_MODE?.trim().toLowerCase() === "chat-completions"
     ? "chat-completions"
     : "responses";
@@ -58,7 +73,7 @@ export interface RuntimeConfiguration {
 }
 
 export function hasOpenAIProvider() {
-  return Boolean(process.env.OPENAI_API_KEY?.trim());
+  return Boolean(getRawApiKey());
 }
 
 export function hasRealtimeTransport() {
