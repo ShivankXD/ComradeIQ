@@ -200,7 +200,7 @@ async function finalizeTextMission(
     max_output_tokens: client.mode === "chat-completions"
       ? (record.route.producesMarkdown ? 360 : 600)
       : (record.route.producesMarkdown ? 6_000 : 2_000),
-  }, context, images.length && OPENAI_VISION_MODEL ? OPENAI_VISION_MODEL : undefined);
+  }, context, images.length && getOpenAIVisionModel() ? getOpenAIVisionModel() : undefined);
   const finalResult = response.output_text.trim();
   if (!finalResult) throw new RuntimeError("provider_rejected", "The AI provider returned no final answer. Please retry.", { status: 502, retryable: true });
   return { finalResult, sources: sourcesFromResponse(response) };
