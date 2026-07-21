@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { CommandInputBar } from "@/components/panels/CommandInputBar";
@@ -130,8 +131,15 @@ export default function Home() {
 
   const navigation = (scope: "desktop" | "mobile") => (
     <>
-      {/* Brand */}
-      <div className="flex items-center gap-3 px-2 py-1 mb-1">
+      {/* Brand — links back to the landing page */}
+      <Link
+        href="/"
+        className="flex items-center gap-3 px-2 py-1 mb-1 rounded-lg transition-colors"
+        style={{ textDecoration: "none" }}
+        title="Back to ComradeIQ home"
+        aria-label="ComradeIQ home"
+        onClick={() => setMobileNavOpen(false)}
+      >
         <div
           className="relative grid h-9 w-9 shrink-0 place-items-center rounded-xl text-sm font-bold text-black"
           style={{
@@ -152,7 +160,7 @@ export default function Home() {
             MISSION CONTROL
           </p>
         </div>
-      </div>
+      </Link>
 
       {/* New Mission */}
       <button
