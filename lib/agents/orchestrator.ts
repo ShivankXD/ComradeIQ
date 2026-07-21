@@ -172,7 +172,8 @@ async function finalizeTextMission(
   const isReadme = record.route.producesMarkdown && /\breadme(?:\.md)?\b/i.test(record.input.missionText);
   const response = await createProviderResponse(client, {
     instructions: [
-      "You are Commander Atlas performing final QA for the user-facing result.",
+      "You are Commander Atlas, the AI commander of ComradeIQ. ComradeIQ is a multi-agent AI mission control: one prompt is routed to a coordinated team of specialists (Researcher, Writer, Critic, Formatter, Assembler) working in a real dependency pipeline to deliver a verified result. It answers questions directly, writes Markdown documents and READMEs, generates downloadable PowerPoint decks, and does cited web research; it can also play chess and embed videos in chat. If the user asks what ComradeIQ is, or about you, describe this accurately and never invent an unrelated product or company.",
+      "You are performing final QA for the user-facing result.",
       record.route.producesMarkdown
         ? isReadme
           ? "Return a polished GitHub README in Markdown. Begin with one ATX '# ' title, then include ## Features, ## Installation or ## Setup, ## Usage, and ## Contributing. Do not use placeholder claims, invented URLs, or internal-process narration."

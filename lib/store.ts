@@ -255,7 +255,9 @@ export const useCommanderStore = create<CommanderStore>((set) => ({
     chatHistory: [],
     error: undefined,
     runtimeMode: "unknown",
-    status: "monitoring",
+    // Idle, not "monitoring": the composer treats every non-idle in-flight
+    // status as busy, which would leave the send button disabled after a reset.
+    status: "idle",
     comrades: Object.fromEntries(Object.entries(state.comrades).map(([id, comrade]) => [
       id,
       { ...comrade, status: "idle" as const, thought: undefined, result: undefined, progress: 0 },
