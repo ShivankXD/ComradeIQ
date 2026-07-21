@@ -2,8 +2,6 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
-import { PDFParse } from "pdf-parse";
-
 import type { MissionAttachment } from "./contracts";
 import { RuntimeError } from "./errors";
 import { runtimeLimits } from "./model";
@@ -69,6 +67,9 @@ function looksBinary(bytes: Uint8Array) {
 }
 
 async function extractPdf(bytes: Uint8Array) {
+  // Lazy-loaded: pdf-parse (via pdfjs-dist) must stay off the route module-init
+  // path, otherwise it crashes serverless functions at import time on Vercel.
+  const { PDFParse } = await import("pdf-parse");
   const parser = new PDFParse({ data: bytes, stopAtErrors: true, disableFontFace: true });
   try {
     const extracted = await parser.getText({ first: MAX_PDF_PAGES, parseHyperlinks: true, pageJoiner: "\n\n--- page {page_number} ---\n" });
