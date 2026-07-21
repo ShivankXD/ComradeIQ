@@ -170,5 +170,5 @@ npm run test:e2e
 Released under the [MIT License](LICENSE).
 
 <div align="center">
-<sub>ComradeIQ · Built for DevPost Hackathon 2026</sub>
+<sub>ComradeIQ · Built for OpenAI Build Week</sub>
 </div>
