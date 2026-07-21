@@ -12,9 +12,9 @@
 [![Groq](https://img.shields.io/badge/LLM-llama--3.3--70b-f55036)](https://groq.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-00c487.svg)](LICENSE)
 
-**[Live app](https://comradeiq.vercel.app)** · [Landing page](https://comradeiq.vercel.app) · [Devpost story](DEVPOST.md)
+**[Live app](https://comradeiq.vercel.app)** · [Devpost story](DEVPOST.md)
 
-![ComradeIQ desktop workspace](docs/screenshots/desktop.png)
+![ComradeIQ landing page](docs/gallery/ComradeIQ-landing.png)
 
 </div>
 
@@ -23,6 +23,12 @@
 ## Why ComradeIQ
 
 Most "multi-agent" AI demos are theater: spinning cards that invent their own progress, phantom parallel calls, and confident answers with no traceable source. ComradeIQ takes the opposite stance. Every visible update traces to a real event, every artifact to real storage, and every error is an honest error. When a capability is not configured, the product says so plainly instead of faking it.
+
+## The workspace
+
+Watch the whole team work at once: a live **agent graph** lights up as the Commander delegates, a terminal-style **agent console** streams the real orchestration events, and the answer arrives with copy, share, and download actions.
+
+![ComradeIQ workspace with live agent graph and ops console](docs/gallery/hiscreenshot.png)
 
 ## What it does
 
@@ -35,41 +41,56 @@ Give one objective and ComradeIQ routes it to the right workflow automatically:
 | **Presentation** | A downloadable **PPTX** deck in one of 4 themes (Camo, Cyberpunk, Minimal, Ocean) |
 | **Research** | A **sourced, cited** answer with real links (opt-in web access) |
 
-For work that needs coordination, the Commander builds and executes a real **dependency DAG**:
+Every session starts from a calm command center with one-click example missions across all four modes:
 
-```
-Researcher --> Writer --> Formatter --> Critic --> Assembler --> Commander QA
-```
+![ComradeIQ mission control welcome state](docs/gallery/screenshot.png)
 
-Each specialist waits for its actual upstream output, and each role sees only its own inputs (no shared transcript).
+For work that needs coordination, the Commander builds and executes a real **dependency DAG**, where each specialist waits for its actual upstream output and sees only its own inputs (no shared transcript):
+
+![ComradeIQ system architecture](docs/gallery/process.png)
 
 ## Signature features
 
-- **Live agent graph.** A dependency-DAG visualization where every specialist node lights up in real time (thinking, working, done) and edges pulse as work flows downstream.
-- **Live agent console.** A terminal-style ops log streaming the real orchestration events (`dispatch --agent writer`, `[critic] working`, `mission complete`). Each line expands to reveal that agent's actual contribution.
-- **Full five-agent pipeline.** Document and slide missions run the whole team, visible end to end.
-- **Play chess with the Commander.** Say "play chess with me" and a rules-validated board opens in chat. You play White; Commander Atlas plays Black through the same model that runs missions.
-- **In-chat video.** Ask for "a video of how jet engines work" and ComradeIQ searches YouTube and embeds a playable player inline.
-- **Shareable permalinks.** Completed missions get a read-only `/m/<id>` link anyone can open, no account required.
-- **Chat management.** A hover menu on every conversation to share, archive, or delete it.
-- **One-click demo.** A "Watch live demo" button auto-runs a representative mission so a first-time visitor sees the full pipeline in seconds.
+### Documents and decks you can download
 
-## How it works
+Presentation missions run the full pipeline and generate a real, downloadable PPTX with a live in-app slide preview.
 
-The browser only ever receives owner-scoped mission and artifact URLs. Provider credentials, storage, validation, orchestration, and durable event persistence all stay on the server.
+<table>
+<tr>
+<td width="55%"><img src="docs/gallery/commander-reply.png" alt="Generated presentation with download" /></td>
+<td width="45%"><img src="docs/gallery/pptByComrade.png" alt="In-app slide preview" /></td>
+</tr>
+</table>
 
-```mermaid
-flowchart LR
-    client["Browser chat workspace"] -->|"HTTPS"| api["Next.js API routes"]
-    api -->|"starts and controls"| mission["Mission orchestrator (real DAG)"]
-    api -->|"SSE"| progress["Mission event stream"]
-    mission -->|"records state"| persistence["Mission + event persistence"]
-    mission -->|"server-only calls"| llm["OpenAI-compatible provider (Groq)"]
-    mission -->|"private artifacts"| storage["Vercel Blob adapter"]
-    progress -->|"safe activity + result events"| client
-```
+### Play chess with the Commander
 
-See the [detailed architecture](docs/architecture.md) for the full breakdown.
+Say "play chess with me" and a rules-validated board opens in chat. You play White; **Commander Atlas plays Black through the same model that runs missions.**
+
+![Chess against Commander Atlas](docs/gallery/playchess.png)
+
+### In-chat video search and embed
+
+Ask for a video and ComradeIQ searches YouTube and embeds a playable player right in the conversation.
+
+<table>
+<tr>
+<td width="50%"><img src="docs/gallery/ytvideo.png" alt="In-chat video embed" /></td>
+<td width="50%"><img src="docs/gallery/extractytvideo.png" alt="In-chat video search" /></td>
+</tr>
+</table>
+
+### Team controls and mission activity
+
+The Commander connects directly to each specialist (never specialist-to-specialist), and every mission has a full, honest activity view.
+
+<table>
+<tr>
+<td width="60%"><img src="docs/gallery/CommanderNetwork.png" alt="Commander network team controls" /></td>
+<td width="40%"><img src="docs/gallery/mission-activity.png" alt="Mission activity panel" /></td>
+</tr>
+</table>
+
+Finished missions also get a **shareable read-only `/m/<id>` permalink**, and every conversation has a hover menu to share, archive, or delete it.
 
 ## Tech stack
 
@@ -118,7 +139,7 @@ Full options are documented in [`.env.example`](.env.example). Deployment guidan
 app/            Landing page, /app tool, /m share page, API routes
 components/     Chat workspace, agent graph, agent console, chess, video, panels
 lib/            Orchestrator, DAG, provider client, intent routing, storage, store
-docs/           Architecture, testing, screenshots
+docs/           Architecture, testing, screenshots, gallery
 tests/          Vitest unit + Playwright e2e
 ```
 
