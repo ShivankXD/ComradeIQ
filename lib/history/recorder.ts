@@ -7,7 +7,7 @@ import { appendEvents, type StoredEvent } from "./db";
  *
  * Thinking deltas arrive per-token, so writing a transaction each time would
  * thrash the disk. Events are batched on a short interval instead, and flushed
- * eagerly when the page is hidden or unloaded — so closing the tab mid-mission
+ * eagerly when the page is hidden or unloaded - so closing the tab mid-mission
  * still leaves everything that happened so far replayable.
  */
 

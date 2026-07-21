@@ -5,7 +5,7 @@
  *
  * Missions and their event streams are cached per-browser, the way a chat app
  * keeps its history. Nothing is sent to a server and nothing is shared between
- * devices — clearing site data clears the history.
+ * devices - clearing site data clears the history.
  *
  * Events are keyed by an auto-incrementing `seq` rather than their timestamp:
  * thinking deltas arrive many-per-millisecond, so a clock cannot order them.
@@ -111,7 +111,7 @@ export async function appendEvents(events: StoredEvent[]): Promise<void> {
   });
 }
 
-/** Most recent first — the order the history strip renders chips in. */
+/** Most recent first - the order the history strip renders chips in. */
 export async function listMissions(limit = MAX_MISSIONS): Promise<StoredMission[]> {
   if (!supported()) return [];
   const all = await tx<StoredMission[]>(MISSIONS, "readonly", (s) => s.getAll());

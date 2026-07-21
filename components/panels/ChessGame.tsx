@@ -21,7 +21,7 @@ export function ChessGame() {
   const [fen, setFen] = useState(gameRef.current.fen());
   const [selected, setSelected] = useState<Square | null>(null);
   const [thinking, setThinking] = useState(false);
-  const [status, setStatus] = useState<string>("Your move — you are White.");
+  const [status, setStatus] = useState<string>("Your move - you are White.");
   const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null);
 
   const game = gameRef.current;
@@ -35,8 +35,8 @@ export function ChessGame() {
   const board = useMemo(() => game.board(), [fen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const describeEnd = useCallback(() => {
-    if (game.isCheckmate()) return game.turn() === "w" ? "Checkmate — Commander wins." : "Checkmate — you win! 🎉";
-    if (game.isStalemate()) return "Stalemate — a draw.";
+    if (game.isCheckmate()) return game.turn() === "w" ? "Checkmate - Commander wins." : "Checkmate - you win! 🎉";
+    if (game.isStalemate()) return "Stalemate - a draw.";
     if (game.isDraw()) return "Draw.";
     return null;
   }, [game]);
@@ -108,7 +108,7 @@ export function ChessGame() {
     setSelected(null);
     setLastMove(null);
     setThinking(false);
-    setStatus("New game — your move, you are White.");
+    setStatus("New game - your move, you are White.");
   }
 
   return (

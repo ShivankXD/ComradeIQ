@@ -41,7 +41,7 @@ function handleEvent(missionId: string, name: string, event: MessageEvent<string
   const data = parseEvent(event);
   if (data === undefined) return;
 
-  // Render first, then persist — a slow IndexedDB write must never delay activity.
+  // Render first, then persist - a slow IndexedDB write must never delay activity.
   applyMissionEvent(name, data);
   if (name !== "mission.state") {
     recordEvent({

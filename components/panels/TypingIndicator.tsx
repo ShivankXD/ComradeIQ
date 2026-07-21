@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * TypingIndicator — animated bouncing dots shown while Commander is working.
+ * TypingIndicator - animated bouncing dots shown while Commander is working.
  * Three dots with staggered CSS animations give the classic "AI is thinking" feel.
  */
 export function TypingIndicator({ label = "Commander is thinking" }: { label?: string }) {

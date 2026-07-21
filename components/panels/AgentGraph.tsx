@@ -7,7 +7,7 @@ import { useCommanderStore, type ComradeStatus } from "@/lib/store";
 /**
  * Live multi-agent DAG. Each specialist node reflects its real mission status
  * (idle → thinking → working → done), and dependency edges light up as upstream
- * work completes — the same topology the orchestrator executes server-side.
+ * work completes - the same topology the orchestrator executes server-side.
  */
 
 interface GraphNode {
@@ -28,7 +28,7 @@ const NODES: GraphNode[] = [
   { id: "assembler", label: "Assembler", short: "A", x: 668, y: 105 },
 ];
 
-// Directed dependency edges [from, to] — matches orchestrator buildAgentDag.
+// Directed dependency edges [from, to] - matches orchestrator buildAgentDag.
 const EDGES: Array<[string, string]> = [
   ["commander", "researcher"],
   ["commander", "writer"],

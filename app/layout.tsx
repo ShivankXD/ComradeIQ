@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ComradeIQ — AI Mission Control",
+  title: "ComradeIQ - AI Mission Control",
   description: "A conversation-first AI mission control for coordinated research, artifacts, and presentations.",
 };
 

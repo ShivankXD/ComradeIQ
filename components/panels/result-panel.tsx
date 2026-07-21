@@ -578,7 +578,7 @@ export function ResultPanel() {
                       </ul>
                     ) : (
                       <p style={{ fontSize: 13, color: "var(--text-muted)", fontStyle: "italic", marginTop: 12 }}>
-                        (Opening Slide — Title & Key Message)
+                        (Opening Slide - Title & Key Message)
                       </p>
                     )}
                   </div>

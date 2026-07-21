@@ -28,7 +28,7 @@ export function TeamStatus({ onOpenTeamControls }: TeamStatusProps) {
 
   return (
     <section className="flex min-w-0 items-center gap-2" aria-label="Commander and Comrades status">
-      {/* Commander chip — desktop */}
+      {/* Commander chip - desktop */}
       <div className="hidden min-w-0 items-center gap-2 lg:flex">
         <span
           className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-[11px] font-bold text-black"

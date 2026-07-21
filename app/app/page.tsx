@@ -54,12 +54,12 @@ export default function Home() {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     if (params.get("demo") !== "1") return;
-    setAutoRunPrompt("Give a concise 3-paragraph briefing on how a multi-agent AI system coordinates specialists — researcher, writer, critic — to deliver a more reliable result than a single model.");
+    setAutoRunPrompt("Give a concise 3-paragraph briefing on how a multi-agent AI system coordinates specialists - researcher, writer, critic - to deliver a more reliable result than a single model.");
     // Clear the flag from the URL so a refresh doesn't relaunch the demo.
     window.history.replaceState(null, "", "/app");
   }, [setAutoRunPrompt]);
 
-  // Live elapsed-time ticker — starts when mission goes in-flight, resets on completion
+  // Live elapsed-time ticker - starts when mission goes in-flight, resets on completion
   useEffect(() => {
     if (!busy) { setElapsedSec(0); return; }
     setElapsedSec(0);
@@ -157,7 +157,7 @@ export default function Home() {
 
   const navigation = (scope: "desktop" | "mobile") => (
     <>
-      {/* Brand — links back to the landing page */}
+      {/* Brand - links back to the landing page */}
       <Link
         href="/"
         className="flex items-center gap-3 px-2 py-1 mb-1 rounded-lg transition-colors"

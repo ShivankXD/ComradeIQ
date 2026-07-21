@@ -62,7 +62,7 @@ export async function POST(request: Request) {
       const raw = completion.choices[0]?.message?.content?.trim().toLowerCase().replace(/[^a-h1-8nbrq]/g, "") ?? "";
       chosen = legalUci.find((m) => m === raw) ?? legalUci.find((m) => raw.startsWith(m.slice(0, 4)));
     } catch {
-      // Provider unavailable — fall back to a legal move below.
+      // Provider unavailable - fall back to a legal move below.
     }
 
     const pick = chosen ?? legalUci[Math.floor(Math.random() * legalUci.length)];

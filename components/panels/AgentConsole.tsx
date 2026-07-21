@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useCommanderStore, type BusMessage, type CommanderStatus } from "@/lib/store";
 
 /**
- * Live agent console — a terminal-styled, real-time log of the ACTUAL mission
+ * Live agent console - a terminal-styled, real-time log of the ACTUAL mission
  * orchestration events (dispatch, per-agent status, synthesis, completion) that
  * the backend emits over SSE. It is a faithful ops view of the pipeline rendered
  * in a command-line aesthetic, not a real shell and not simulated output.
@@ -113,7 +113,7 @@ export function AgentConsole() {
           <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#27c93f" }} />
         </span>
         <p className="ml-1 text-[10px] font-semibold uppercase" style={{ color: "var(--text-muted)", letterSpacing: "0.16em", fontFamily: "var(--font-code)" }}>
-          agent-console — mission ops
+          agent-console - mission ops
         </p>
         <span className="ml-auto flex items-center gap-1.5 text-[9px]" style={{ color: busy ? "var(--accent)" : "var(--text-muted)", fontFamily: "var(--font-code)" }}>
           <span

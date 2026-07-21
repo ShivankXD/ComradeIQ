@@ -403,7 +403,7 @@ export async function executeMission(missionId: string): Promise<MissionExecutio
     }
 
     // Always synthesize the final deliverable from every specialist report so
-    // the reviewed/assembled pipeline output — not just the writer's raw draft —
+    // the reviewed/assembled pipeline output - not just the writer's raw draft -
     // is what the user receives.
     const final = await finalizeTextMission(record, reports, client, context);
     const sources = mergeSources(reportSources, final.sources);

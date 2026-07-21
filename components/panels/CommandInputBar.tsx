@@ -58,7 +58,7 @@ export function CommandInputBar() {
   const setAutoRunPrompt = useCommanderStore((state) => state.setAutoRunPrompt);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Consume seed prompt from welcome chips — populate draft and focus
+  // Consume seed prompt from welcome chips - populate draft and focus
   useEffect(() => {
     if (!seedPrompt) return;
     setDraft(seedPrompt);
@@ -172,7 +172,7 @@ export function CommandInputBar() {
   }
 
   function openChess(text: string) {
-    openWidgetTurn(text, { content: "Challenge accepted. You are White, I am Black — make your move, Commander.", widget: { type: "chess" } });
+    openWidgetTurn(text, { content: "Challenge accepted. You are White, I am Black - make your move, Commander.", widget: { type: "chess" } });
   }
 
   async function openVideo(text: string) {
