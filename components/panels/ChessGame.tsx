@@ -9,10 +9,9 @@ import { useCallback, useMemo, useRef, useState } from "react";
  * /api/chess-move, validated server-side. You play White, the Commander plays Black.
  */
 
-const PIECE_GLYPH: Record<string, string> = {
-  wp: "♙", wn: "♘", wb: "♗", wr: "♖", wq: "♕", wk: "♔",
-  bp: "♟", bn: "♞", bb: "♝", br: "♜", bq: "♛", bk: "♚",
-};
+// Use the solid (filled) glyph set for BOTH colours so every piece reads as a
+// solid shape; the side is conveyed by fill colour + outline, not a hollow glyph.
+const SOLID: Record<string, string> = { p: "♟", n: "♞", b: "♝", r: "♜", q: "♛", k: "♚" };
 
 const FILES = ["a", "b", "c", "d", "e", "f", "g", "h"] as const;
 const RANKS = ["8", "7", "6", "5", "4", "3", "2", "1"] as const;
@@ -46,6 +45,10 @@ export function ChessGame() {
     if (game.isGameOver()) { setStatus(describeEnd() ?? "Game over."); return; }
     setThinking(true);
     setStatus("Commander is thinking…");
+    const startedAt = Date.now();
+    // Keep the "thinking" state on screen long enough to read, even when the
+    // provider replies almost instantly.
+    const MIN_THINK_MS = 1400;
     let applied = false;
     try {
       const res = await fetch("/api/chess-move", {
@@ -67,6 +70,8 @@ export function ChessGame() {
       const pick = moves[Math.floor(Math.random() * moves.length)];
       if (pick) { const m = game.move(pick); setLastMove({ from: m.from as Square, to: m.to as Square }); }
     }
+    const elapsed = Date.now() - startedAt;
+    if (elapsed < MIN_THINK_MS) await new Promise((resolve) => setTimeout(resolve, MIN_THINK_MS - elapsed));
     setFen(game.fen());
     setThinking(false);
     setStatus(describeEnd() ?? (game.inCheck() ? "Check! Your move." : "Your move."));
@@ -150,14 +155,24 @@ export function ChessGame() {
                   background: isSelected ? "#7fa650" : isLast ? (isDark ? "#6b7f4f" : "#d7dcb8") : base,
                   aspectRatio: "1",
                   cursor: game.turn() === "w" && !thinking ? "pointer" : "default",
-                  fontSize: "clamp(18px, 6vw, 30px)",
                   lineHeight: 1,
-                  color: piece?.color === "w" ? "#f8f8f8" : "#141414",
-                  textShadow: piece?.color === "w" ? "0 1px 1px rgba(0,0,0,0.4)" : "none",
                 }}
                 aria-label={`${square}${piece ? ` ${piece.color}${piece.type}` : ""}`}
               >
-                {piece && PIECE_GLYPH[`${piece.color}${piece.type}`]}
+                {piece && (
+                  <span
+                    style={{
+                      fontSize: "clamp(21px, 6.6vw, 34px)",
+                      lineHeight: 1,
+                      color: piece.color === "w" ? "#f7f7f2" : "#191919",
+                      WebkitTextStroke: piece.color === "w" ? "1.3px rgba(20,20,20,0.75)" : "1px rgba(240,240,240,0.35)",
+                      textShadow: "0 1.5px 2px rgba(0,0,0,0.4)",
+                      filter: "drop-shadow(0 1px 0.5px rgba(0,0,0,0.25))",
+                    }}
+                  >
+                    {SOLID[piece.type]}
+                  </span>
+                )}
                 {isTarget && (
                   <span
                     aria-hidden="true"
