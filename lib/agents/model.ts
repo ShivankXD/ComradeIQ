@@ -15,31 +15,42 @@ function envInteger(name: string, fallback: number, min: number, max: number) {
   return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
 }
 
-function getRawApiKey() {
-  return (process.env.OPENAI_API_KEY || process.env.GROQ_API_KEY)?.trim() || "";
+export function getRawApiKey() {
+  return (
+    process.env.OPENAI_API_KEY ||
+    process.env.GROQ_API_KEY ||
+    process.env.GROQ_KEY ||
+    process.env.AI_API_KEY ||
+    process.env.NEXT_PUBLIC_OPENAI_API_KEY ||
+    process.env.NEXT_PUBLIC_GROQ_API_KEY
+  )?.trim() || "";
 }
 
 export function isGroqKey() {
   const key = getRawApiKey();
-  return Boolean(process.env.GROQ_API_KEY?.trim()) || key.startsWith("gsk_");
+  return Boolean(process.env.GROQ_API_KEY?.trim() || process.env.GROQ_KEY?.trim()) || key.startsWith("gsk_");
 }
 
-export const OPENAI_MODEL =
-  process.env.OPENAI_MODEL?.trim() ||
-  (isGroqKey() ? "llama-3.3-70b-versatile" : DEFAULT_OPENAI_MODEL);
+export function getOpenAIModel() {
+  return (
+    process.env.OPENAI_MODEL?.trim() ||
+    (isGroqKey() ? "llama-3.3-70b-versatile" : DEFAULT_OPENAI_MODEL)
+  );
+}
 
-export const OPENAI_VISION_MODEL = process.env.OPENAI_VISION_MODEL?.trim();
+export function getOpenAIVisionModel() {
+  return process.env.OPENAI_VISION_MODEL?.trim();
+}
 
-export const OPENAI_BASE_URL =
-  process.env.OPENAI_BASE_URL?.trim() ||
-  (isGroqKey() ? "https://api.groq.com/openai/v1" : undefined);
+export function getOpenAIBaseUrl() {
+  return (
+    process.env.OPENAI_BASE_URL?.trim() ||
+    (isGroqKey() ? "https://api.groq.com/openai/v1" : undefined)
+  );
+}
 
-/**
- * Official OpenAI uses Responses by default. Gateways like Groq or custom base URLs that document only the
- * Chat Completions protocol must use chat-completions mode.
- */
 export function openAIApiMode(): OpenAIApiMode {
-  if (isGroqKey() || OPENAI_BASE_URL) return "chat-completions";
+  if (isGroqKey() || getOpenAIBaseUrl()) return "chat-completions";
   return process.env.OPENAI_API_MODE?.trim().toLowerCase() === "chat-completions"
     ? "chat-completions"
     : "responses";
@@ -47,7 +58,7 @@ export function openAIApiMode(): OpenAIApiMode {
 
 /** Hosted web search and OpenAI moderation have no generic Chat Completions equivalent. */
 export function supportsHostedOpenAIFeatures() {
-  return openAIApiMode() === "responses" && !OPENAI_BASE_URL;
+  return openAIApiMode() === "responses" && !getOpenAIBaseUrl();
 }
 
 export interface RuntimeConfiguration {
@@ -84,11 +95,6 @@ export function hasPrivateBlobStorage() {
   return Boolean(process.env.BLOB_READ_WRITE_TOKEN?.trim() || (process.env.VERCEL_OIDC_TOKEN?.trim() && process.env.BLOB_STORE_ID?.trim()));
 }
 
-/**
- * Keep local development artifacts available across Next dev-server restarts.
- * Production still requires private Blob storage; local disk is never treated
- * as a deployment-safe persistence layer.
- */
 export function usesLocalFilesystemStorage() {
   return process.env.NODE_ENV === "development" && !hasPrivateBlobStorage();
 }
@@ -108,10 +114,13 @@ export function getRuntimeConfiguration(): RuntimeConfiguration {
   const durableStorageConfigured = hasPrivateBlobStorage();
   const localFilesystemStorage = usesLocalFilesystemStorage();
   const providerAvailable = hasOpenAIProvider();
+  const model = getOpenAIModel();
+  const visionModel = getOpenAIVisionModel();
+
   return {
     provider: providerAvailable ? "openai" : "unconfigured",
-    model: providerAvailable ? OPENAI_MODEL : undefined,
-    visionModel: providerAvailable && OPENAI_VISION_MODEL ? OPENAI_VISION_MODEL : undefined,
+    model: providerAvailable ? model : undefined,
+    visionModel: providerAvailable && visionModel ? visionModel : undefined,
     apiMode: openAIApiMode(),
     webResearchEnabled: providerAvailable && supportsHostedOpenAIFeatures(),
     moderationEnabled: providerAvailable && supportsHostedOpenAIFeatures() && !envBoolean("COMRADEIQ_DISABLE_MODERATION"),
@@ -120,7 +129,6 @@ export function getRuntimeConfiguration(): RuntimeConfiguration {
     artifactStorage: durableStorageConfigured ? "vercel-blob-private" : localFilesystemStorage ? "local-filesystem" : "memory",
     durableStorageConfigured,
     coordination: "instance-local-fenced",
-    // A memory fallback is useful for local development, but intentionally not called deployment-ready.
     deploymentReady: providerAvailable && durableStorageConfigured,
     limits: runtimeLimits(),
   };

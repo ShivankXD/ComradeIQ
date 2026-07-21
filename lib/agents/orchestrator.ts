@@ -19,7 +19,7 @@ import {
   updateMission,
   type MissionRecord,
 } from "./missions";
-import { runtimeLimits, OPENAI_VISION_MODEL } from "./model";
+import { runtimeLimits, getOpenAIVisionModel } from "./model";
 import { createOpenAIClient, createProviderResponse, moderateMissionInput, sourcesFromResponse, type ProviderCallContext } from "./openai";
 import { assertPresentationQuality, buildPresentation, presentationFilename, requestedSlideCount, sanitizePresentation, type PresentationJson } from "./presentation";
 import { emitMissionEvent } from "./realtime";
@@ -114,7 +114,7 @@ function buildAgentDag(
     return ["researcher", "writer", "formatter", "critic"].filter((candidate) => has(candidate as ComradeRole));
   };
   const attachmentReference = attachmentReferenceText(record.input.attachments);
-  const images = OPENAI_VISION_MODEL ? readyImages(record) : [];
+  const images = getOpenAIVisionModel() ? readyImages(record) : [];
 
   return roles.map((role) => ({
     id: role,
@@ -174,7 +174,7 @@ async function finalizeTextMission(
   client: ReturnType<typeof createOpenAIClient>,
   context: ProviderCallContext,
 ) {
-  const images = OPENAI_VISION_MODEL ? readyImages(record) : [];
+  const images = getOpenAIVisionModel() ? readyImages(record) : [];
   const isReadme = record.route.producesMarkdown && /\breadme(?:\.md)?\b/i.test(record.input.missionText);
   const response = await createProviderResponse(client, {
     instructions: [

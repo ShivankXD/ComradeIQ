@@ -19,7 +19,7 @@ import type {
 
 import type { MissionSource } from "./contracts";
 import { asRuntimeError, RuntimeError } from "./errors";
-import { hasOpenAIProvider, OPENAI_BASE_URL, OPENAI_MODEL, openAIApiMode, type OpenAIApiMode, supportsHostedOpenAIFeatures } from "./model";
+import { hasOpenAIProvider, getOpenAIBaseUrl, getOpenAIModel, openAIApiMode, type OpenAIApiMode, supportsHostedOpenAIFeatures, getRawApiKey } from "./model";
 
 export interface ProviderCallContext {
   requestId: string;
@@ -42,12 +42,12 @@ export interface ProviderResponse {
 }
 
 export function createOpenAIClient(): ProviderClient {
-  const key = (process.env.OPENAI_API_KEY || process.env.GROQ_API_KEY)?.trim();
+  const key = getRawApiKey();
   if (!key || !hasOpenAIProvider()) {
     throw new RuntimeError("provider_unconfigured", "Live AI is not configured. Add OPENAI_API_KEY or GROQ_API_KEY on the server and restart the deployment.", { status: 503 });
   }
   return {
-    sdk: new OpenAI({ apiKey: key, baseURL: OPENAI_BASE_URL, maxRetries: 0, timeout: 25_000 }),
+    sdk: new OpenAI({ apiKey: key, baseURL: getOpenAIBaseUrl(), maxRetries: 0, timeout: 25_000 }),
     mode: openAIApiMode(),
   };
 }
@@ -156,7 +156,7 @@ export function toChatCompletionRequest(
   }
 
   const format = params.text?.format;
-  const useJsonObject = Boolean(OPENAI_BASE_URL) && format?.type === "json_schema";
+  const useJsonObject = Boolean(getOpenAIBaseUrl()) && format?.type === "json_schema";
   const responseFormat = useJsonObject
     ? { type: "json_object" as const }
     : format?.type === "json_schema"
@@ -218,7 +218,7 @@ export async function createProviderResponse(
   client: ProviderClient,
   params: Omit<ResponseCreateParamsNonStreaming, "model" | "safety_identifier">,
   context: ProviderCallContext,
-  model = OPENAI_MODEL,
+  model = getOpenAIModel(),
 ): Promise<ProviderResponse> {
   let lastError: RuntimeError | undefined;
   for (let attempt = 0; attempt < 2; attempt += 1) {

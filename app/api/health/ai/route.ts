@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getRuntimeConfiguration, hasOpenAIProvider, hasRealtimeTransport, OPENAI_MODEL } from "@/lib/agents/model";
+import { getRuntimeConfiguration, hasOpenAIProvider, hasRealtimeTransport, getOpenAIModel } from "@/lib/agents/model";
 import { objectStorageConfiguration } from "@/lib/agents/storage";
 
 export const runtime = "nodejs";
@@ -10,7 +10,7 @@ export async function GET() {
   const configuration = getRuntimeConfiguration();
   return NextResponse.json({
     provider: hasOpenAIProvider() ? "openai" : "unconfigured",
-    model: hasOpenAIProvider() ? OPENAI_MODEL : undefined,
+    model: hasOpenAIProvider() ? getOpenAIModel() : undefined,
     realtimeEnabled: hasRealtimeTransport(),
     configuration: {
       ...configuration,
