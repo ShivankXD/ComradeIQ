@@ -9,7 +9,7 @@ permissions:
 
 defaults:
   run:
-    working-directory: comradeiq
+    working-directory: .
 
 jobs:
   verify:
@@ -22,7 +22,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: comradeiq/package-lock.json
+          cache-dependency-path: package-lock.json
       - name: Install locked dependencies
         run: npm ci
       - name: Lint

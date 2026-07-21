@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, type KeyboardEvent, useRef, useState } from "react";
+import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
 
 import { launchMission } from "@/lib/agents/mission-client";
 import { saveMission } from "@/lib/history/db";
@@ -33,6 +33,17 @@ export function CommandInputBar() {
   const [attachmentNotice, setAttachmentNotice] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
   const busy = inFlight.includes(status);
+  const seedPrompt = useCommanderStore((state) => state.seedPrompt);
+  const setSeedPrompt = useCommanderStore((state) => state.setSeedPrompt);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Consume seed prompt from welcome chips — populate draft and focus
+  useEffect(() => {
+    if (!seedPrompt) return;
+    setDraft(seedPrompt);
+    setSeedPrompt(undefined);
+    setTimeout(() => textareaRef.current?.focus(), 60);
+  }, [seedPrompt, setSeedPrompt]);
 
   function addAttachments(files: FileList | File[]) {
     const incoming = Array.from(files);
@@ -282,6 +293,7 @@ export function CommandInputBar() {
           {/* Textarea */}
           <textarea
             id="mission-input"
+            ref={textareaRef}
             rows={1}
             value={draft}
             onChange={(event) => {
