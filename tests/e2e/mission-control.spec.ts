@@ -25,7 +25,7 @@ async function submitMission(page: Page, mission: string) {
 }
 
 async function openTeamControlsFromUnavailableMission(page: Page) {
-  await page.goto("/");
+  await page.goto("/app");
   await submitMission(page, "Show the team controls.");
   await expect(page.getByText(/live ai.*configur/i)).toBeVisible({ timeout: 30_000 });
   await page.getByRole("button", { name: "Activity", exact: true }).click();
@@ -52,7 +52,7 @@ async function downloadBytes(download: Download) {
 test.describe("provider configuration and team controls", () => {
   test("shows an honest onboarding state when no API key is configured", async ({ page }) => {
     await requireNoProvider(page);
-    await page.goto("/");
+    await page.goto("/app");
 
     await submitMission(page, "Hello");
 
@@ -96,7 +96,7 @@ test.describe("real provider artifacts", () => {
 
   test("answers a greeting with a real configured provider", async ({ page }) => {
     await requireLiveProvider(page);
-    await page.goto("/");
+    await page.goto("/app");
     await submitMission(page, "Hi");
 
     const result = await waitForResult(page);
@@ -106,7 +106,7 @@ test.describe("real provider artifacts", () => {
 
   test("creates a downloadable README Markdown artifact", async ({ page }) => {
     await requireLiveProvider(page);
-    await page.goto("/");
+    await page.goto("/app");
     await submitMission(page, "Create a concise README for a small TypeScript release-check project. Include installation and usage sections.");
 
     const result = await waitForResult(page);
@@ -121,7 +121,7 @@ test.describe("real provider artifacts", () => {
 
   test("uses web research only after the user enables it and returns a cited source link", async ({ page }) => {
     await requireLiveProvider(page);
-    await page.goto("/");
+    await page.goto("/app");
     await page.getByRole("button", { name: /search web/i }).click();
     await expect(page.getByRole("button", { name: /web on/i })).toBeVisible();
     await submitMission(page, "Research the official OpenAI API documentation and give one concise, cited finding.");
@@ -133,7 +133,7 @@ test.describe("real provider artifacts", () => {
 
   test("creates and downloads a valid PPTX presentation", async ({ page }) => {
     await requireLiveProvider(page);
-    await page.goto("/");
+    await page.goto("/app");
     await submitMission(page, "Create a short three-slide presentation about release verification.");
 
     const result = await waitForResult(page);

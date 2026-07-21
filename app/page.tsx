@@ -1,518 +1,618 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 
-import { CommandInputBar } from "@/components/panels/CommandInputBar";
-import { ConnectorsDialog } from "@/components/panels/ConnectorsDialog";
-import { ContextWindowBar } from "@/components/panels/ContextWindowBar";
-import { MissionActivityPanel } from "@/components/panels/MissionActivityPanel";
-import { MissionConversation } from "@/components/panels/MissionConversation";
-import { ProviderStatus } from "@/components/panels/ProviderStatus";
-import { TeamMapDialog } from "@/components/panels/TeamMapDialog";
-import { TeamStatus } from "@/components/panels/TeamStatus";
-import { useKeyboardShortcuts } from "@/components/panels/useKeyboardShortcuts";
-import { useModalDialog } from "@/components/panels/useModalDialog";
-import { useMissionHistory } from "@/lib/history/use-mission-history";
-import { cancelReplay, replayMission } from "@/lib/history/replay";
-import { useCommanderStore, type CommanderStatus } from "@/lib/store";
+const features = [
+  {
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </svg>
+    ),
+    title: "Research",
+    description: "Web-enabled Researcher specialist scours the internet and synthesizes authoritative answers.",
+  },
+  {
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
+      </svg>
+    ),
+    title: "Write",
+    description: "Narrative Writer crafts structured artifacts — reports, READMEs, and documents — from a single brief.",
+  },
+  {
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" />
+      </svg>
+    ),
+    title: "Present",
+    description: "Formatter and Assembler transform raw content into polished PPTX presentations, ready to deliver.",
+  },
+  {
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" />
+      </svg>
+    ),
+    title: "Coordinate",
+    description: "Multi-agent architecture — Commander orchestrates Researcher, Writer, Critic, Formatter, and Assembler simultaneously.",
+  },
+  {
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+      </svg>
+    ),
+    title: "Monitor",
+    description: "Real-time mission timeline shows every step — planning, dispatching, execution, and synthesis — as it happens.",
+  },
+  {
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+      </svg>
+    ),
+    title: "Export",
+    description: "Download results as Markdown or PPTX. Web sources cited. Mission history persists locally across sessions.",
+  },
+];
 
-const inFlight: CommanderStatus[] = ["thinking", "dispatching", "delegating", "monitoring", "synthesizing"];
+const steps = [
+  { num: "01", label: "Give a mission", detail: "Type any objective into the command bar — a question, a document brief, or a presentation topic." },
+  { num: "02", label: "Commander plans",  detail: "The Commander reviews your mission and selects the right specialists for the job." },
+  { num: "03", label: "Team executes",    detail: "Active specialists work in parallel — researching, writing, critiquing, and assembling." },
+  { num: "04", label: "Result delivered", detail: "A complete artifact is delivered: readable inline, downloadable as Markdown or PPTX." },
+];
 
-function relativeTime(ts: number): string {
-  const diff = Date.now() - ts;
-  if (diff < 60_000) return "just now";
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
-  return `${Math.floor(diff / 86_400_000)}d ago`;
-}
-
-export default function Home() {
-  const commanderName = useCommanderStore((state) => state.name);
-  const setCommanderName = useCommanderStore((state) => state.setCommanderName);
-  const status = useCommanderStore((state) => state.status);
-  const objective = useCommanderStore((state) => state.objective);
-  const resetMissionView = useCommanderStore((state) => state.resetMissionView);
-  const { missions } = useMissionHistory();
-  const [activityOpen, setActivityOpen] = useState(false);
-  const [teamMapOpen, setTeamMapOpen] = useState(false);
-  const [connectorsOpen, setConnectorsOpen] = useState(false);
-  const [hasActiveConnectors, setHasActiveConnectors] = useState(false);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const mobileNavRef = useRef<HTMLElement | null>(null);
-  const mobileNavCloseRef = useRef<HTMLButtonElement | null>(null);
-  const busy = inFlight.includes(status);
-  const [elapsedSec, setElapsedSec] = useState(0);
-
-  // Live elapsed-time ticker — starts when mission goes in-flight, resets on completion
-  useEffect(() => {
-    if (!busy) { setElapsedSec(0); return; }
-    setElapsedSec(0);
-    const interval = setInterval(() => setElapsedSec((s) => s + 1), 1000);
-    return () => clearInterval(interval);
-  }, [busy]);
-
-  const formatElapsed = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
-
-  // Check connectors status periodically or on mount/dialog close
-  const checkConnectors = useCallback(() => {
-    try {
-      const saved = localStorage.getItem("comradeiq-connectors");
-      if (saved) {
-        const parsed = JSON.parse(saved) as Record<string, boolean>;
-        setHasActiveConnectors(Object.values(parsed).some(Boolean));
-      } else {
-        setHasActiveConnectors(false);
-      }
-    } catch {
-      setHasActiveConnectors(false);
-    }
-  }, []);
-
-  // Check on mount
-  useState(() => {
-    if (typeof window !== "undefined") {
-      checkConnectors();
-    }
-  });
-
-  useModalDialog({ open: mobileNavOpen, dialogRef: mobileNavRef, initialFocusRef: mobileNavCloseRef, onClose: () => setMobileNavOpen(false) });
-
-  function startNewMission() {
-    if (busy) return;
-    cancelReplay();
-    resetMissionView();
-    setActivityOpen(false);
-    setMobileNavOpen(false);
-  }
-
-  function openTeamControls() {
-    setActivityOpen(false);
-    setTeamMapOpen(true);
-  }
-
-  function selectMission(missionId: string) {
-    if (busy) return;
-    setMobileNavOpen(false);
-    void replayMission(missionId);
-  }
-
-  // ── Keyboard shortcuts ──────────────────────────────
-  const handleNewMission = useCallback(() => {
-    if (busy) return;
-    cancelReplay();
-    resetMissionView();
-    setActivityOpen(false);
-    setMobileNavOpen(false);
-  }, [busy, resetMissionView]);
-
-  const handleOpenTeam = useCallback(() => {
-    if (busy) return;
-    setActivityOpen(false);
-    setTeamMapOpen(true);
-  }, [busy]);
-
-  useKeyboardShortcuts([
-    { key: "k", meta: true, description: "New mission",    handler: handleNewMission },
-    { key: "/", meta: true, description: "Team controls", handler: handleOpenTeam },
-  ]);
-
-  const navigation = (scope: "desktop" | "mobile") => (
-    <>
-      {/* Brand */}
-      <div className="flex items-center gap-3 px-2 py-1 mb-1">
-        <div
-          className="relative grid h-9 w-9 shrink-0 place-items-center rounded-xl text-sm font-bold text-black"
-          style={{
-            background: "linear-gradient(135deg, #00e5a0 0%, #00c487 100%)",
-            boxShadow: "0 0 20px rgba(0,229,160,0.35), inset 0 1px 0 rgba(255,255,255,0.25)",
-          }}
-        >
-          C
-        </div>
-        <div>
-          <p
-            className="text-sm font-bold tracking-tight"
-            style={{ fontFamily: "var(--font-brand)", color: "var(--text-primary)", letterSpacing: "-0.01em" }}
-          >
-            ComradeIQ
-          </p>
-          <p className="text-[10px]" style={{ color: "var(--text-muted)", fontFamily: "var(--font-code)", letterSpacing: "0.08em" }}>
-            MISSION CONTROL
-          </p>
-        </div>
-      </div>
-
-      {/* New Mission */}
-      <button
-        type="button"
-        onClick={startNewMission}
-        disabled={busy}
-        data-testid={scope === "desktop" ? "new-mission" : "mobile-new-mission"}
-        className="mt-4 group relative flex items-center justify-between gap-2.5 w-full rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-40"
-        style={{
-          background: "rgba(0,229,160,0.06)",
-          border: "1px solid rgba(0,229,160,0.2)",
-          color: "var(--accent)",
-        }}
-        onMouseEnter={(e) => {
-          if (!busy) {
-            (e.currentTarget as HTMLButtonElement).style.background = "rgba(0,229,160,0.12)";
-            (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(0,229,160,0.4)";
-            (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 16px rgba(0,229,160,0.12)";
-          }
-        }}
-        onMouseLeave={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.background = "rgba(0,229,160,0.06)";
-          (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(0,229,160,0.2)";
-          (e.currentTarget as HTMLButtonElement).style.boxShadow = "none";
-        }}
-      >
-        <span className="flex items-center gap-2">
-          <span
-            className="grid h-5 w-5 shrink-0 place-items-center rounded-md text-xs font-bold text-black transition-transform duration-150 group-hover:scale-110"
-            style={{ background: "linear-gradient(135deg, #00e5a0, #00c487)" }}
-            aria-hidden="true"
-          >
-            +
-          </span>
-          New mission
-        </span>
-        {/* Keyboard shortcut hint */}
-        <kbd
-          className="hidden shrink-0 items-center gap-0.5 rounded px-1 py-0.5 text-[9px] sm:flex"
-          style={{
-            background: "rgba(0,229,160,0.08)",
-            border: "1px solid rgba(0,229,160,0.2)",
-            color: "rgba(0,229,160,0.7)",
-            fontFamily: "var(--font-code)",
-          }}
-        >
-          ⌘K
-        </kbd>
-      </button>
-
-      {/* Recent Missions */}
-      <p
-        className="mt-6 px-2 text-[9px] font-semibold uppercase"
-        style={{ color: "var(--text-muted)", letterSpacing: "0.18em", fontFamily: "var(--font-code)" }}
-      >
-        Recent missions
-      </p>
-      <div className="mt-2 min-h-0 flex-1 space-y-0.5 overflow-y-auto">
-        {missions.length ? (
-          missions.map((mission) => (
-            <button
-              key={mission.id}
-              type="button"
-              disabled={busy}
-              onClick={() => selectMission(mission.id)}
-              title={mission.missionText}
-              className="w-full rounded-lg px-3 py-2 text-left transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-40"
-              style={{ color: "var(--text-secondary)" }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.05)";
-                (e.currentTarget as HTMLButtonElement).style.color = "var(--text-primary)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-                (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)";
-              }}
-            >
-              <span className="flex items-center gap-1.5">
-                <span
-                  className="h-1.5 w-1.5 shrink-0 rounded-full"
-                  style={{
-                    background: mission.status === "complete" ? "var(--accent)"
-                              : mission.status === "error" ? "#ff8a65"
-                              : "var(--text-muted)",
-                  }}
-                  aria-hidden="true"
-                />
-                <span className="flex-1 truncate text-[13px]">{mission.missionText}</span>
-              </span>
-              <span
-                className="mt-0.5 block pl-3 text-[10px]"
-                style={{ color: "var(--text-muted)", fontFamily: "var(--font-code)" }}
-              >
-                {relativeTime(mission.createdAt)}
-              </span>
-            </button>
-          ))
-        ) : (
-          <p className="px-3 py-2 text-xs leading-5" style={{ color: "var(--text-muted)" }}>
-            Completed missions will appear here.
-          </p>
-        )}
-      </div>
-
-      {/* Context window + Commander section */}
-      <div
-        className="mt-4 pt-4 space-y-3"
-        style={{ borderTop: "1px solid var(--border-dim)" }}
-      >
-        {/* Context window bar */}
-        <ContextWindowBar />
-
-        {/* Commander name input */}
-        <div>
-          <label
-            className="block text-[9px] font-semibold uppercase px-1 mb-1.5"
-            htmlFor={`commander-name-${scope}`}
-            style={{ color: "var(--text-muted)", letterSpacing: "0.14em", fontFamily: "var(--font-code)" }}
-          >
-            Commander
-          </label>
-          <input
-            id={`commander-name-${scope}`}
-            value={commanderName}
-            onChange={(event) => setCommanderName(event.target.value)}
-            className="w-full rounded-lg px-2.5 py-2 text-[13px] transition-all duration-150"
-            style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid var(--border-dim)",
-              color: "var(--text-primary)",
-              outline: "none",
-            }}
-            onFocus={(e) => {
-              (e.currentTarget as HTMLInputElement).style.borderColor = "rgba(0,229,160,0.35)";
-              (e.currentTarget as HTMLInputElement).style.boxShadow = "0 0 0 2px rgba(0,229,160,0.08)";
-            }}
-            onBlur={(e) => {
-              (e.currentTarget as HTMLInputElement).style.borderColor = "var(--border-dim)";
-              (e.currentTarget as HTMLInputElement).style.boxShadow = "none";
-            }}
-          />
-          <div className="mt-3"><ProviderStatus /></div>
-        </div>
-      </div>
-    </>
-  );
-
+export default function LandingPage() {
   return (
-    <main
-      className="flex h-[100dvh] overflow-hidden"
-      style={{ background: "transparent", position: "relative", zIndex: 1 }}
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "#08090a",
+        color: "#eef2f0",
+        fontFamily: "'Space Grotesk', system-ui, sans-serif",
+        overflowX: "hidden",
+      }}
     >
-      {/* ── Sidebar ─────────────────────────────────── */}
-      <aside
-        className="hidden w-[248px] shrink-0 flex-col p-3 md:flex"
+      {/* Background gradient */}
+      <div
+        aria-hidden="true"
         style={{
-          background: "rgba(4, 8, 5, 0.55)",
-          borderRight: "1px solid rgba(0,229,160,0.1)",
-          backdropFilter: "blur(16px)",
-          WebkitBackdropFilter: "blur(16px)",
-        }}
-        aria-label="Mission navigation"
-      >
-        {navigation("desktop")}
-      </aside>
-
-      {/* ── Main area ───────────────────────────────── */}
-      <section
-        className="flex min-w-0 flex-1 flex-col"
-        style={{ background: "transparent" }}
-      >
-        {/* Header */}
-        <header
-          className="flex min-h-14 shrink-0 items-center justify-between gap-3 px-3 sm:px-5"
-          style={{
-            borderBottom: "1px solid rgba(0,229,160,0.1)",
-            background: "rgba(4, 8, 5, 0.60)",
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
-          }}
-        >
-          <div className="flex min-w-0 items-center gap-2">
-            {/* Mobile hamburger */}
-            <button
-              type="button"
-              onClick={() => setMobileNavOpen(true)}
-              data-testid="mobile-menu"
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-all duration-150 md:hidden"
-              style={{ color: "var(--text-secondary)" }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.07)"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
-              aria-label="Open mission navigation"
-              aria-expanded={mobileNavOpen}
-              aria-controls="mobile-mission-navigation"
-            >
-              <span className="flex w-[14px] flex-col gap-[4px]" aria-hidden="true">
-                <span className="h-px w-full rounded-full" style={{ background: "currentColor" }} />
-                <span className="h-px w-3/4 rounded-full" style={{ background: "currentColor" }} />
-                <span className="h-px w-full rounded-full" style={{ background: "currentColor" }} />
-              </span>
-            </button>
-
-            <div className="min-w-0">
-              <p
-                className="truncate text-sm font-semibold"
-                style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}
-              >
-                {objective || "New mission"}
-              </p>
-              {objective && (
-                <p
-                  className="hidden truncate text-[10px] sm:flex items-center gap-1.5"
-                  style={{ color: busy ? "var(--accent)" : "var(--text-muted)", fontFamily: "var(--font-code)", letterSpacing: "0.06em" }}
-                >
-                  {busy ? (
-                    <>
-                      <span
-                        className="h-1.5 w-1.5 rounded-full shrink-0"
-                        style={{ background: "var(--accent)", boxShadow: "0 0 6px var(--accent)", animation: "pulse-dot 1.4s ease-in-out infinite" }}
-                        aria-hidden="true"
-                      />
-                      {status.toUpperCase()} · {formatElapsed(elapsedSec)}
-                    </>
-                  ) : (
-                    <>STATUS: {status.toUpperCase()}</>
-                  )}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="flex shrink-0 items-center gap-2">
-            {objective && (
-              <button
-                type="button"
-                onClick={() => setActivityOpen(true)}
-                data-testid="mission-activity"
-                className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all duration-150"
-                style={{
-                  border: "1px solid var(--border-mid)",
-                  color: "var(--text-secondary)",
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(0,229,160,0.3)";
-                  (e.currentTarget as HTMLButtonElement).style.color = "var(--accent)";
-                  (e.currentTarget as HTMLButtonElement).style.background = "rgba(0,229,160,0.06)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-mid)";
-                  (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)";
-                  (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-                }}
-                aria-haspopup="dialog"
-              >
-                <span
-                  className="h-1.5 w-1.5 rounded-full"
-                  style={{
-                    background: busy ? "var(--accent)" : "var(--text-muted)",
-                    boxShadow: busy ? "0 0 6px var(--accent)" : "none",
-                    animation: busy ? "pulse-dot 1.4s ease-in-out infinite" : "none",
-                  }}
-                  aria-hidden="true"
-                />
-                Activity
-              </button>
-            )}
-            
-            {/* Connectors / Integrations Button */}
-            <button
-              type="button"
-              onClick={() => setConnectorsOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all duration-150"
-              style={{
-                border: "1px solid var(--border-mid)",
-                color: "var(--text-secondary)",
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(0,229,160,0.3)";
-                (e.currentTarget as HTMLButtonElement).style.color = "var(--accent)";
-                (e.currentTarget as HTMLButtonElement).style.background = "rgba(0,229,160,0.06)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-mid)";
-                (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)";
-                (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-              }}
-              aria-haspopup="dialog"
-            >
-              <span
-                className="h-1.5 w-1.5 rounded-full"
-                style={{
-                  background: hasActiveConnectors ? "var(--accent)" : "var(--text-muted)",
-                  boxShadow: hasActiveConnectors ? "0 0 6px var(--accent)" : "none",
-                  animation: hasActiveConnectors ? "pulse-dot 1.4s ease-in-out infinite" : "none",
-                }}
-                aria-hidden="true"
-              />
-              Plugins
-            </button>
-
-            <TeamStatus onOpenTeamControls={openTeamControls} />
-          </div>
-        </header>
-
-        {/* Conversation */}
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <MissionConversation />
-        </div>
-
-        {/* Input bar */}
-        <div
-          className="shrink-0 px-3 pb-[max(0.9rem,env(safe-area-inset-bottom))] pt-3 sm:px-5"
-          style={{ borderTop: "1px solid rgba(0,229,160,0.08)" }}
-        >
-          <CommandInputBar />
-        </div>
-      </section>
-
-      {/* ── Mobile nav overlay ───────────────────────── */}
-      {mobileNavOpen && (
-        <div
-          className="fixed inset-0 z-40 md:hidden"
-          style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setMobileNavOpen(false);
-          }}
-        >
-          <aside
-            ref={mobileNavRef}
-            id="mobile-mission-navigation"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Mission navigation"
-            tabIndex={-1}
-            className="flex h-[100dvh] w-[min(85vw,300px)] flex-col p-3 shadow-2xl"
-            style={{
-              background: "rgba(4, 8, 5, 0.75)",
-              borderRight: "1px solid rgba(0,229,160,0.12)",
-              backdropFilter: "blur(24px)",
-              WebkitBackdropFilter: "blur(24px)",
-            }}
-          >
-            <div className="flex justify-end mb-1">
-              <button
-                ref={mobileNavCloseRef}
-                type="button"
-                onClick={() => setMobileNavOpen(false)}
-                className="grid h-8 w-8 place-items-center rounded-lg text-lg leading-none transition-all"
-                style={{ color: "var(--text-secondary)" }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.07)"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
-                aria-label="Close mission navigation"
-              >
-                <span aria-hidden="true">×</span>
-              </button>
-            </div>
-            {navigation("mobile")}
-          </aside>
-        </div>
-      )}
-
-      {activityOpen && objective && (
-        <MissionActivityPanel onClose={() => setActivityOpen(false)} onOpenTeamMap={openTeamControls} />
-      )}
-      <TeamMapDialog open={teamMapOpen} onClose={() => setTeamMapOpen(false)} />
-      <ConnectorsDialog
-        isOpen={connectorsOpen}
-        onClose={() => {
-          setConnectorsOpen(false);
-          checkConnectors();
+          position: "fixed",
+          inset: 0,
+          zIndex: 0,
+          backgroundImage: `
+            radial-gradient(ellipse 60% 40% at 20% 20%, rgba(0,229,160,0.07) 0%, transparent 60%),
+            radial-gradient(ellipse 50% 35% at 80% 75%, rgba(61,158,255,0.05) 0%, transparent 55%),
+            linear-gradient(rgba(0,229,160,0.028) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0,229,160,0.028) 1px, transparent 1px)
+          `,
+          backgroundSize: "100% 100%, 100% 100%, 36px 36px, 36px 36px",
+          pointerEvents: "none",
         }}
       />
-    </main>
+
+      <div style={{ position: "relative", zIndex: 1 }}>
+        {/* Nav */}
+        <nav
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "16px 32px",
+            borderBottom: "1px solid rgba(255,255,255,0.05)",
+            background: "rgba(8,9,10,0.8)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+            position: "sticky",
+            top: 0,
+            zIndex: 100,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: 10,
+                background: "linear-gradient(135deg, #00e5a0 0%, #00c487 100%)",
+                display: "grid",
+                placeItems: "center",
+                fontWeight: 700,
+                fontSize: 14,
+                color: "#060f0a",
+                boxShadow: "0 0 18px rgba(0,229,160,0.3)",
+              }}
+            >
+              C
+            </div>
+            <span
+              style={{
+                fontFamily: "'Syne', system-ui, sans-serif",
+                fontWeight: 700,
+                fontSize: 18,
+                letterSpacing: "-0.02em",
+                color: "#eef2f0",
+              }}
+            >
+              ComradeIQ
+            </span>
+          </div>
+
+          <Link
+            href="/app"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              background: "linear-gradient(135deg, #00e5a0 0%, #00c487 100%)",
+              color: "#060f0a",
+              fontWeight: 700,
+              fontSize: 13,
+              letterSpacing: "-0.01em",
+              padding: "9px 20px",
+              borderRadius: 10,
+              textDecoration: "none",
+              boxShadow: "0 0 20px rgba(0,229,160,0.28)",
+              transition: "box-shadow 0.18s ease",
+            }}
+          >
+            Launch App
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          </Link>
+        </nav>
+
+        {/* Hero */}
+        <section
+          style={{
+            textAlign: "center",
+            padding: "96px 24px 80px",
+            maxWidth: 900,
+            margin: "0 auto",
+          }}
+        >
+          {/* Tag */}
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              background: "rgba(0,229,160,0.07)",
+              border: "1px solid rgba(0,229,160,0.22)",
+              borderRadius: 999,
+              padding: "5px 14px",
+              marginBottom: 32,
+            }}
+          >
+            <span
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: "#00e5a0",
+                boxShadow: "0 0 6px rgba(0,229,160,0.9)",
+                display: "inline-block",
+                animation: "pulse-dot 1.4s ease-in-out infinite",
+              }}
+            />
+            <span
+              style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 11,
+                letterSpacing: "0.16em",
+                color: "#00e5a0",
+              }}
+            >
+              MULTI-AGENT AI MISSION CONTROL
+            </span>
+          </div>
+
+          <h1
+            style={{
+              fontFamily: "'Syne', system-ui, sans-serif",
+              fontSize: "clamp(40px, 7vw, 76px)",
+              fontWeight: 800,
+              letterSpacing: "-0.04em",
+              lineHeight: 1.06,
+              color: "#f0f5f2",
+              marginBottom: 24,
+            }}
+          >
+            Give the Commander<br />
+            <span
+              style={{
+                background: "linear-gradient(135deg, #00e5a0 0%, #3d9eff 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
+            >
+              a mission.
+            </span>
+          </h1>
+
+          <p
+            style={{
+              fontSize: 18,
+              lineHeight: 1.7,
+              color: "#a8b4ae",
+              maxWidth: 560,
+              margin: "0 auto 40px",
+            }}
+          >
+            ComradeIQ is a multi-agent AI command center. One prompt coordinates
+            a team of specialists — Researcher, Writer, Critic, Formatter, and Assembler —
+            to deliver results beyond any single model.
+          </p>
+
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+            <Link
+              href="/app"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                background: "linear-gradient(135deg, #00e5a0 0%, #00c487 100%)",
+                color: "#060f0a",
+                fontWeight: 700,
+                fontSize: 15,
+                padding: "13px 28px",
+                borderRadius: 12,
+                textDecoration: "none",
+                boxShadow: "0 0 30px rgba(0,229,160,0.3)",
+              }}
+            >
+              Start a mission
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </Link>
+            <a
+              href="https://github.com/ShivankXD/ComradeIQ"
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                color: "#c8d5ce",
+                fontWeight: 600,
+                fontSize: 15,
+                padding: "13px 28px",
+                borderRadius: 12,
+                textDecoration: "none",
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12z"/>
+              </svg>
+              View on GitHub
+            </a>
+          </div>
+        </section>
+
+        {/* Features grid */}
+        <section
+          style={{
+            maxWidth: 1100,
+            margin: "0 auto",
+            padding: "0 24px 96px",
+          }}
+        >
+          <p
+            style={{
+              textAlign: "center",
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 11,
+              letterSpacing: "0.2em",
+              color: "rgba(0,229,160,0.7)",
+              marginBottom: 16,
+              textTransform: "uppercase",
+            }}
+          >
+            Capabilities
+          </p>
+          <h2
+            style={{
+              textAlign: "center",
+              fontFamily: "'Syne', system-ui, sans-serif",
+              fontSize: "clamp(24px, 3.5vw, 38px)",
+              fontWeight: 700,
+              letterSpacing: "-0.03em",
+              color: "#eef2f0",
+              marginBottom: 48,
+            }}
+          >
+            Everything your team needs
+          </h2>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+              gap: 16,
+            }}
+          >
+            {features.map((f) => (
+              <div
+                key={f.title}
+                style={{
+                  background: "rgba(255,255,255,0.025)",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                  borderRadius: 16,
+                  padding: "24px 24px",
+                  transition: "border-color 0.18s ease, box-shadow 0.18s ease",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(0,229,160,0.22)";
+                  (e.currentTarget as HTMLDivElement).style.boxShadow = "0 0 30px rgba(0,229,160,0.07)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.07)";
+                  (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
+                }}
+              >
+                <div
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 10,
+                    background: "rgba(0,229,160,0.1)",
+                    border: "1px solid rgba(0,229,160,0.2)",
+                    display: "grid",
+                    placeItems: "center",
+                    color: "#00e5a0",
+                    marginBottom: 16,
+                  }}
+                >
+                  {f.icon}
+                </div>
+                <h3
+                  style={{
+                    fontWeight: 600,
+                    fontSize: 15,
+                    letterSpacing: "-0.01em",
+                    color: "#eef2f0",
+                    marginBottom: 8,
+                  }}
+                >
+                  {f.title}
+                </h3>
+                <p style={{ fontSize: 13, lineHeight: 1.65, color: "#7a8a84" }}>{f.description}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* How it works */}
+        <section
+          style={{
+            maxWidth: 900,
+            margin: "0 auto",
+            padding: "0 24px 96px",
+          }}
+        >
+          <p
+            style={{
+              textAlign: "center",
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 11,
+              letterSpacing: "0.2em",
+              color: "rgba(0,229,160,0.7)",
+              marginBottom: 16,
+              textTransform: "uppercase",
+            }}
+          >
+            How it works
+          </p>
+          <h2
+            style={{
+              textAlign: "center",
+              fontFamily: "'Syne', system-ui, sans-serif",
+              fontSize: "clamp(24px, 3.5vw, 38px)",
+              fontWeight: 700,
+              letterSpacing: "-0.03em",
+              color: "#eef2f0",
+              marginBottom: 56,
+            }}
+          >
+            From prompt to artifact in four steps
+          </h2>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            {steps.map((step, i) => (
+              <div
+                key={step.num}
+                style={{
+                  display: "flex",
+                  gap: 24,
+                  alignItems: "flex-start",
+                  paddingBottom: i < steps.length - 1 ? 36 : 0,
+                  position: "relative",
+                }}
+              >
+                {/* Left: number + line */}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+                  <div
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 12,
+                      background: "rgba(0,229,160,0.08)",
+                      border: "1px solid rgba(0,229,160,0.25)",
+                      display: "grid",
+                      placeItems: "center",
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontWeight: 700,
+                      fontSize: 13,
+                      color: "#00e5a0",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {step.num}
+                  </div>
+                  {i < steps.length - 1 && (
+                    <div
+                      style={{
+                        width: 1,
+                        flexGrow: 1,
+                        minHeight: 28,
+                        background: "linear-gradient(to bottom, rgba(0,229,160,0.3), rgba(0,229,160,0.05))",
+                        marginTop: 4,
+                      }}
+                    />
+                  )}
+                </div>
+
+                {/* Right: content */}
+                <div style={{ paddingTop: 10 }}>
+                  <p
+                    style={{
+                      fontWeight: 600,
+                      fontSize: 16,
+                      letterSpacing: "-0.02em",
+                      color: "#eef2f0",
+                      marginBottom: 6,
+                    }}
+                  >
+                    {step.label}
+                  </p>
+                  <p style={{ fontSize: 14, lineHeight: 1.65, color: "#7a8a84" }}>{step.detail}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* CTA */}
+        <section
+          style={{
+            maxWidth: 680,
+            margin: "0 auto",
+            padding: "0 24px 96px",
+            textAlign: "center",
+          }}
+        >
+          <div
+            style={{
+              background: "rgba(0,229,160,0.04)",
+              border: "1px solid rgba(0,229,160,0.15)",
+              borderRadius: 24,
+              padding: "56px 32px",
+              boxShadow: "0 0 60px rgba(0,229,160,0.06)",
+            }}
+          >
+            <div
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: 14,
+                background: "linear-gradient(135deg, #00e5a0, #00c487)",
+                display: "grid",
+                placeItems: "center",
+                margin: "0 auto 24px",
+                fontWeight: 700,
+                fontSize: 20,
+                color: "#060f0a",
+                boxShadow: "0 0 30px rgba(0,229,160,0.4)",
+              }}
+            >
+              C
+            </div>
+            <h2
+              style={{
+                fontFamily: "'Syne', system-ui, sans-serif",
+                fontSize: "clamp(22px, 4vw, 36px)",
+                fontWeight: 800,
+                letterSpacing: "-0.035em",
+                color: "#eef2f0",
+                marginBottom: 14,
+              }}
+            >
+              Ready for your first mission?
+            </h2>
+            <p style={{ fontSize: 15, lineHeight: 1.7, color: "#8a9a94", marginBottom: 32 }}>
+              No sign-up required. Just configure your API key and give the Commander an objective.
+            </p>
+            <Link
+              href="/app"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                background: "linear-gradient(135deg, #00e5a0 0%, #00c487 100%)",
+                color: "#060f0a",
+                fontWeight: 700,
+                fontSize: 15,
+                padding: "13px 32px",
+                borderRadius: 12,
+                textDecoration: "none",
+                boxShadow: "0 0 30px rgba(0,229,160,0.35)",
+              }}
+            >
+              Launch ComradeIQ
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer
+          style={{
+            borderTop: "1px solid rgba(255,255,255,0.05)",
+            padding: "24px 32px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 12,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: 7,
+                background: "linear-gradient(135deg, #00e5a0, #00c487)",
+                display: "grid",
+                placeItems: "center",
+                fontWeight: 700,
+                fontSize: 11,
+                color: "#060f0a",
+              }}
+            >
+              C
+            </div>
+            <span style={{ fontSize: 13, color: "#5a6660", fontWeight: 500 }}>
+              ComradeIQ — Built for DevPost Hackathon 2026
+            </span>
+          </div>
+          <div style={{ display: "flex", gap: 20 }}>
+            <Link href="/app" style={{ fontSize: 13, color: "#5a6660", textDecoration: "none" }}>App</Link>
+            <a href="https://github.com/ShivankXD/ComradeIQ" target="_blank" rel="noreferrer" style={{ fontSize: 13, color: "#5a6660", textDecoration: "none" }}>GitHub</a>
+          </div>
+        </footer>
+      </div>
+
+      {/* Inline styles for animations that CSS-in-JS can't do in Server Components */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;700&display=swap');
+        @keyframes pulse-dot {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50%       { opacity: 0.5; transform: scale(0.85); }
+        }
+      `}</style>
+    </div>
   );
 }
