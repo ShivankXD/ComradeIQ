@@ -129,7 +129,7 @@ function buildAgentDag(
       attachmentReference,
       useInternet: role === "researcher" && record.route.usesWeb,
       imageDataUrls: role === "writer" ? images : [],
-      visionModel: OPENAI_VISION_MODEL,
+      visionModel: getOpenAIVisionModel(),
       upstream,
     }, context, publish),
   }));
