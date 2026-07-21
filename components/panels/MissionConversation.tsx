@@ -6,6 +6,7 @@ import { cancelMission, retryMission } from "@/lib/agents/mission-client";
 import { useMissionRealtime } from "@/lib/agents/use-mission-realtime";
 import { useCommanderStore, type CommanderStatus } from "@/lib/store";
 
+import { AgentConsole } from "./AgentConsole";
 import { AgentGraph } from "./AgentGraph";
 import { MissionTimeline } from "./MissionTimeline";
 import { ResultPanel } from "./result-panel";
@@ -349,8 +350,9 @@ export function MissionConversation() {
       {/* Mission timeline */}
       <MissionTimeline />
 
-      {/* Live multi-agent execution graph */}
+      {/* Live multi-agent execution graph + ops console */}
       {status !== "idle" && <AgentGraph />}
+      {status !== "idle" && <AgentConsole />}
 
       <ol className="space-y-6 mt-6" aria-label="Conversation messages">
         {chatHistory.map((turn) => {
