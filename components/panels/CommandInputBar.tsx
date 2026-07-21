@@ -17,12 +17,19 @@ const typeFor = (value: string): MissionType => /\b(presentation|slides?|powerpo
 
 // Interactive chat commands that open a widget instead of running a mission.
 const CHESS_CMD = /\b(?:play|start|begin|game of)\s+chess\b|\bchess\s+(?:game|match|with\s+me)\b|let'?s\s+play\s+chess|^\s*chess\s*$/i;
-const VIDEO_CMD = /\b(?:show|find|play|search|get|watch|pull\s+up)\b[^.?!]*\bvideos?\b|\bvideos?\s+(?:of|about|on|for)\b|\byoutube\b|\btrailer\b|\bmusic\s+video\b/i;
+// Video intent: a request verb near "video/clip/trailer/youtube", OR "video/clip
+// of/about/…", OR an explicit youtube/yt/music-video mention. "video game(s)" as a
+// bare topic is excluded so document/slide asks about games don't hijack.
+const VIDEO_CMD = /\b(?:show|find|get|give|play|search|watch|pull\s+up|want|need|fetch|display)\b[^.?!]*\b(?:videos?|clips?|trailers?|youtube|yt)\b|\b(?:videos?|clips?|trailers?)\s+(?:of|about|on|for|showing|with|walkthrough)\b|\byoutube\b|\byt\b|\bmusic\s+video\b/i;
 
 function extractVideoQuery(text: string): string {
-  let q = text.replace(/\b(?:please|hey|can you|could you|would you|i want|i'd like|give me)\b/gi, " ");
-  q = q.replace(/\b(?:show|find|play|search(?:\s+for)?|get|watch|pull\s+up)\b/gi, " ");
-  q = q.replace(/\b(?:me|us)?\s*(?:a|an|the)?\s*(?:youtube\s*)?(?:music\s*)?videos?\s*(?:of|about|on|for|showing)?\b/gi, " ");
+  let q = text.replace(/\b(?:please|hey|can you|could you|would you|i(?:'d)?\s*(?:want|like|need)|give me|get me|show me|find me)\b/gi, " ");
+  q = q.replace(/\b(?:show|find|play|search(?:\s+for)?|get|give|watch|pull\s+up|display|fetch|need|want)\b/gi, " ");
+  q = q.replace(/\b(?:a|an|the)?\s*(?:youtube\s*)?(?:music\s*)?(?:videos?|clips?|trailers?)\s*(?:of|about|on|for|showing|with)?\b/gi, " ");
+  q = q.replace(/\b(?:showing|walkthrough\s+of|walkthrough)\b/gi, " walkthrough ");
+  q = q.replace(/\b(?:from|on|in|via|off(?:\s+of)?)\s+(?:youtube|yt)\b/gi, " ");
+  q = q.replace(/\b(?:youtube|yt)\b/gi, " ");
+  q = q.replace(/^[\s,]*(?:a|an|the)\s+/i, "");
   q = q.replace(/[?.!]+\s*$/g, "").replace(/\s+/g, " ").trim();
   return q || text;
 }
@@ -117,8 +124,12 @@ export function CommandInputBar() {
       compiledPrompt = `Previous conversation:\n${contextParts.join("\n")}\n\nLatest instruction: ${missionText}`;
     }
 
-    // Append theme instruction dynamically
-    compiledPrompt = `${compiledPrompt} [THEME: ${themeId}]`;
+    // The visual theme only affects presentation decks. Appending it to chat or
+    // document prompts pollutes the request (e.g. "hi" became a camo essay), so
+    // only tag presentation missions.
+    if (typeFor(missionText) === "presentation") {
+      compiledPrompt = `${compiledPrompt} [THEME: ${themeId}]`;
+    }
 
     const clientMissionId = crypto.randomUUID();
     const selectedAttachments = attachments;
