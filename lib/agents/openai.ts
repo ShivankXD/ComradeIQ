@@ -42,9 +42,9 @@ export interface ProviderResponse {
 }
 
 export function createOpenAIClient(): ProviderClient {
-  const key = process.env.OPENAI_API_KEY?.trim();
+  const key = (process.env.OPENAI_API_KEY || process.env.GROQ_API_KEY)?.trim();
   if (!key || !hasOpenAIProvider()) {
-    throw new RuntimeError("provider_unconfigured", "Live AI is not configured. Add OPENAI_API_KEY on the server and restart the deployment.", { status: 503 });
+    throw new RuntimeError("provider_unconfigured", "Live AI is not configured. Add OPENAI_API_KEY or GROQ_API_KEY on the server and restart the deployment.", { status: 503 });
   }
   return {
     sdk: new OpenAI({ apiKey: key, baseURL: OPENAI_BASE_URL, maxRetries: 0, timeout: 25_000 }),

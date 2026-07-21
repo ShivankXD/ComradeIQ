@@ -13,10 +13,10 @@ import { SafeMarkdown } from "./SafeMarkdown";
 
 const inFlight: CommanderStatus[] = ["thinking", "dispatching", "delegating", "synthesizing"];
 
-// â”€â”€ Seed prompt categories â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Seed prompt categories
 const SEED_PROMPTS = [
   {
-    category: "ðŸ’¬ Chat",
+    category: "Chat",
     color: "#00e5a0",
     bg: "rgba(0,229,160,0.06)",
     border: "rgba(0,229,160,0.18)",
@@ -26,7 +26,7 @@ const SEED_PROMPTS = [
     ],
   },
   {
-    category: "ðŸ“„ Document",
+    category: "Document",
     color: "#3d9eff",
     bg: "rgba(61,158,255,0.06)",
     border: "rgba(61,158,255,0.18)",
@@ -36,7 +36,7 @@ const SEED_PROMPTS = [
     ],
   },
   {
-    category: "ðŸ“Š Slides",
+    category: "Slides",
     color: "#a855f7",
     bg: "rgba(168,85,247,0.06)",
     border: "rgba(168,85,247,0.18)",
@@ -46,7 +46,7 @@ const SEED_PROMPTS = [
     ],
   },
   {
-    category: "ðŸ”¬ Research",
+    category: "Research",
     color: "#fbbf24",
     bg: "rgba(251,191,36,0.06)",
     border: "rgba(251,191,36,0.18)",
@@ -244,7 +244,7 @@ export function MissionConversation() {
     }
   }
 
-  /* â”€â”€ Welcome / idle state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  /* Welcome / idle state */
   if (!objective) {
     return (
       <section
@@ -286,7 +286,7 @@ export function MissionConversation() {
               className="mt-7 text-[10px] font-semibold uppercase"
               style={{ color: "var(--accent)", letterSpacing: "0.2em", fontFamily: "var(--font-code)" }}
             >
-              Mission Control Â· Ready
+              Mission Control - Ready
             </p>
 
             <h1
@@ -301,16 +301,16 @@ export function MissionConversation() {
             </h1>
 
             <p className="mt-4 max-w-lg text-[15px] leading-7" style={{ color: "var(--text-secondary)" }}>
-              One prompt. A team of specialists â€” Researcher, Writer, Critic, Formatter, Assembler â€” working in a real dependency pipeline to deliver a verified result.
+              One prompt. A team of specialists - Researcher, Writer, Critic, Formatter, Assembler - working in a real dependency pipeline to deliver a verified result.
             </p>
 
             {/* Capability pills */}
             <div className="mt-6 flex flex-wrap gap-2">
               {[
-                { label: "ðŸ’¬ Direct chat",   color: "rgba(0,229,160,0.08)",  border: "rgba(0,229,160,0.2)" },
-                { label: "ðŸ“„ Markdown docs", color: "rgba(61,158,255,0.08)", border: "rgba(61,158,255,0.2)" },
-                { label: "ðŸ“Š PPTX slides",   color: "rgba(168,85,247,0.08)", border: "rgba(168,85,247,0.2)" },
-                { label: "ðŸ”¬ Web research",  color: "rgba(251,191,36,0.08)", border: "rgba(251,191,36,0.2)" },
+                { label: "Direct chat",   color: "rgba(0,229,160,0.08)",  border: "rgba(0,229,160,0.2)" },
+                { label: "Markdown docs", color: "rgba(61,158,255,0.08)", border: "rgba(61,158,255,0.2)" },
+                { label: "PPTX slides",   color: "rgba(168,85,247,0.08)", border: "rgba(168,85,247,0.2)" },
+                { label: "Web research",  color: "rgba(251,191,36,0.08)", border: "rgba(251,191,36,0.2)" },
               ].map(({ label, color, border }) => (
                 <span
                   key={label}
@@ -333,7 +333,7 @@ export function MissionConversation() {
   const configurationHint = runtimeMode === "unavailable"
     ? "Live AI is not configured or is unavailable for this deployment."
     : "You can retry the mission after checking the configuration or request details.";
-  const needsConfiguration = runtimeMode === "unavailable" || /configur|api key|openai/i.test(error ?? "");
+  const needsConfiguration = runtimeMode === "unavailable" || /configur|api key|openai|groq/i.test(error ?? "");
 
   return (
     <section
@@ -345,7 +345,7 @@ export function MissionConversation() {
         {commanderName}: {statusCopy[status]} {error ?? ""}
       </p>
 
-      {/* â”€â”€ Mission timeline â”€â”€ */}
+      {/* Mission timeline */}
       <MissionTimeline />
 
       <ol className="space-y-6 mt-6" aria-label="Conversation messages">
@@ -384,12 +384,12 @@ export function MissionConversation() {
             const isResearch = !isJson && /\[.+?\]\(https?:\/\/.+?\)/.test(turn.content) && turn.content.split("http").length > 3;
             const isDocument = !isJson && !isResearch && turn.content.length > 400 && /^#{1,3}\s/m.test(turn.content);
             const typeBadge = isSlides
-              ? { label: "ðŸ“Š Slides",   color: "#a855f7", bg: "rgba(168,85,247,0.1)",  border: "rgba(168,85,247,0.25)" }
+              ? { label: "Slides",   color: "#a855f7", bg: "rgba(168,85,247,0.1)",  border: "rgba(168,85,247,0.25)" }
               : isResearch
-              ? { label: "ðŸ”¬ Research", color: "#fbbf24", bg: "rgba(251,191,36,0.1)",  border: "rgba(251,191,36,0.25)" }
+              ? { label: "Research", color: "#fbbf24", bg: "rgba(251,191,36,0.1)",  border: "rgba(251,191,36,0.25)" }
               : isDocument
-              ? { label: "ðŸ“„ Document", color: "#3d9eff", bg: "rgba(61,158,255,0.1)",  border: "rgba(61,158,255,0.25)" }
-              : { label: "ðŸ’¬ Chat",     color: "#00e5a0", bg: "rgba(0,229,160,0.08)",  border: "rgba(0,229,160,0.2)"  };
+              ? { label: "Document", color: "#3d9eff", bg: "rgba(61,158,255,0.1)",  border: "rgba(61,158,255,0.25)" }
+              : { label: "Chat",     color: "#00e5a0", bg: "rgba(0,229,160,0.08)",  border: "rgba(0,229,160,0.2)"  };
 
             return (
               <li key={turn.id} className="flex items-start gap-3">
@@ -468,11 +468,11 @@ export function MissionConversation() {
               <div className="mt-2">
                 <TypingIndicator
                   label={
-                    status === "thinking" ? "Planning missionâ€¦" :
-                    status === "dispatching" ? "Dispatching to specialistsâ€¦" :
-                    status === "delegating" ? "Specialists are workingâ€¦" :
-                    status === "synthesizing" ? "Synthesizing resultsâ€¦" :
-                    "Workingâ€¦"
+                    status === "thinking" ? "Planning mission..." :
+                    status === "dispatching" ? "Dispatching to specialists..." :
+                    status === "delegating" ? "Specialists are working..." :
+                    status === "synthesizing" ? "Synthesizing results..." :
+                    "Working..."
                   }
                 />
               </div>
@@ -496,7 +496,7 @@ export function MissionConversation() {
                     (e.currentTarget as HTMLButtonElement).style.background = "transparent";
                   }}
                 >
-                  {actionState === "cancelling" ? "Cancellingâ€¦" : "Cancel mission"}
+                  {actionState === "cancelling" ? "Cancelling..." : "Cancel mission"}
                 </button>
               )}
 
@@ -537,7 +537,7 @@ export function MissionConversation() {
               className="mt-3 block rounded-lg px-3 py-2 text-xs"
               style={{ background: "rgba(0,0,0,0.3)", color: "#ffb39a", fontFamily: "var(--font-code)" }}
             >
-              OPENAI_API_KEY=â€¦
+              OPENAI_API_KEY=... or GROQ_API_KEY=...
             </code>
           )}
           <div className="mt-3 flex flex-wrap gap-2">
@@ -552,7 +552,7 @@ export function MissionConversation() {
                 onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 16px rgba(0,229,160,0.35)"; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "none"; }}
               >
-                {actionState === "retrying" ? "Retryingâ€¦" : "Retry mission"}
+                {actionState === "retrying" ? "Retrying..." : "Retry mission"}
               </button>
             )}
           </div>

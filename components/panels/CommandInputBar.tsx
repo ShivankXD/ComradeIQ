@@ -420,7 +420,7 @@ export function CommandInputBar() {
         className="mt-2 text-center text-[10px] leading-5"
         style={{ color: "var(--text-muted)", fontFamily: "var(--font-code)" }}
       >
-        txt · md · json · csv · pdf · png/jpg/webp — up to {maxAttachments} files, 4 MB each
+        txt | md | json | csv | pdf | png/jpg/webp - up to {maxAttachments} files, 4 MB each
       </p>
       <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{attachmentNotice}</p>
       {attachmentNotice && (
