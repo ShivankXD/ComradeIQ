@@ -13,13 +13,13 @@ import { listMissions, type StoredMission } from "./db";
  * which is when a chip's label or status dot would actually change.
  */
 export function useMissionHistory() {
-  const [missions, setMissions] = useState<StoredMission[]>([]);
+  const [allMissions, setAllMissions] = useState<StoredMission[]>([]);
   const status = useCommanderStore((state) => state.status);
   const missionId = useCommanderStore((state) => state.missionId);
 
   const refresh = useCallback(() => {
     listMissions()
-      .then(setMissions)
+      .then(setAllMissions)
       .catch((error) => console.error("Failed to read mission history", error));
   }, []);
 
@@ -27,5 +27,8 @@ export function useMissionHistory() {
     refresh();
   }, [refresh, missionId, status]);
 
-  return { missions, refresh };
+  const missions = allMissions.filter((mission) => !mission.archived);
+  const archivedMissions = allMissions.filter((mission) => mission.archived);
+
+  return { missions, archivedMissions, refresh };
 }

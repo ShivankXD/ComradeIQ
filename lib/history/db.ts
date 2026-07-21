@@ -23,6 +23,8 @@ export interface StoredMission {
   createdAt: number;
   completedAt?: number;
   resultUrl?: string;
+  /** User-archived chats are hidden from the main history strip. */
+  archived?: boolean;
 }
 
 export interface StoredEvent {
@@ -130,6 +132,11 @@ export async function getEvents(missionId: string): Promise<StoredEvent[]> {
     request.onsuccess = () => resolve(request.result as StoredEvent[]);
     request.onerror = () => reject(request.error);
   });
+}
+
+/** Toggles a mission's archived flag; a no-op if the mission is gone. */
+export async function setMissionArchived(id: string, archived: boolean): Promise<void> {
+  await patchMission(id, { archived });
 }
 
 export async function deleteMission(id: string): Promise<void> {

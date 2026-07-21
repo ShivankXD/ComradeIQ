@@ -8,12 +8,14 @@ import { ConnectorsDialog } from "@/components/panels/ConnectorsDialog";
 import { ContextWindowBar } from "@/components/panels/ContextWindowBar";
 import { MissionActivityPanel } from "@/components/panels/MissionActivityPanel";
 import { MissionConversation } from "@/components/panels/MissionConversation";
+import { MissionHistoryItem } from "@/components/panels/MissionHistoryItem";
 import { ProviderStatus } from "@/components/panels/ProviderStatus";
 import { TeamMapDialog } from "@/components/panels/TeamMapDialog";
 import { TeamStatus } from "@/components/panels/TeamStatus";
 import { useKeyboardShortcuts } from "@/components/panels/useKeyboardShortcuts";
 import { useModalDialog } from "@/components/panels/useModalDialog";
 import { useMissionHistory } from "@/lib/history/use-mission-history";
+import { deleteMission, setMissionArchived } from "@/lib/history/db";
 import { cancelReplay, replayMission } from "@/lib/history/replay";
 import { useCommanderStore, type CommanderStatus } from "@/lib/store";
 
@@ -33,7 +35,8 @@ export default function Home() {
   const status = useCommanderStore((state) => state.status);
   const objective = useCommanderStore((state) => state.objective);
   const resetMissionView = useCommanderStore((state) => state.resetMissionView);
-  const { missions } = useMissionHistory();
+  const { missions, archivedMissions, refresh: refreshHistory } = useMissionHistory();
+  const [showArchived, setShowArchived] = useState(false);
   const [activityOpen, setActivityOpen] = useState(false);
   const [teamMapOpen, setTeamMapOpen] = useState(false);
   const [connectorsOpen, setConnectorsOpen] = useState(false);
@@ -107,6 +110,29 @@ export default function Home() {
     if (busy) return;
     setMobileNavOpen(false);
     void replayMission(missionId);
+  }
+
+  function shareMission(id: string) {
+    if (typeof window === "undefined") return;
+    const link = `${window.location.origin}/m/${id}`;
+    void (navigator.clipboard?.writeText
+      ? navigator.clipboard.writeText(link)
+      : Promise.resolve()
+    ).catch(() => undefined);
+  }
+
+  function archiveMission(id: string, archived: boolean) {
+    void setMissionArchived(id, archived).then(refreshHistory).catch((error) => console.error("Failed to archive chat", error));
+  }
+
+  function removeMission(id: string) {
+    // If the deleted chat is the one on screen, return to a clean canvas.
+    const store = useCommanderStore.getState();
+    if (store.missionId === id || store.replayMissionId === id) {
+      cancelReplay();
+      resetMissionView();
+    }
+    void deleteMission(id).then(refreshHistory).catch((error) => console.error("Failed to delete chat", error));
   }
 
   // ── Keyboard shortcuts ──────────────────────────────
@@ -221,47 +247,58 @@ export default function Home() {
       <div className="mt-2 min-h-0 flex-1 space-y-0.5 overflow-y-auto">
         {missions.length ? (
           missions.map((mission) => (
-            <button
+            <MissionHistoryItem
               key={mission.id}
-              type="button"
-              disabled={busy}
-              onClick={() => selectMission(mission.id)}
-              title={mission.missionText}
-              className="w-full rounded-lg px-3 py-2 text-left transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-40"
-              style={{ color: "var(--text-secondary)" }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.05)";
-                (e.currentTarget as HTMLButtonElement).style.color = "var(--text-primary)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-                (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)";
-              }}
-            >
-              <span className="flex items-center gap-1.5">
-                <span
-                  className="h-1.5 w-1.5 shrink-0 rounded-full"
-                  style={{
-                    background: mission.status === "complete" ? "var(--accent)"
-                              : mission.status === "error" ? "#ff8a65"
-                              : "var(--text-muted)",
-                  }}
-                  aria-hidden="true"
-                />
-                <span className="flex-1 truncate text-[13px]">{mission.missionText}</span>
-              </span>
-              <span
-                className="mt-0.5 block pl-3 text-[10px]"
-                style={{ color: "var(--text-muted)", fontFamily: "var(--font-code)" }}
-              >
-                {relativeTime(mission.createdAt)}
-              </span>
-            </button>
+              mission={mission}
+              busy={busy}
+              onSelect={selectMission}
+              onShare={shareMission}
+              onArchive={archiveMission}
+              onDelete={removeMission}
+              relativeTime={relativeTime}
+            />
           ))
         ) : (
           <p className="px-3 py-2 text-xs leading-5" style={{ color: "var(--text-muted)" }}>
             Completed missions will appear here.
           </p>
+        )}
+
+        {/* Archived chats */}
+        {archivedMissions.length > 0 && (
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => setShowArchived((open) => !open)}
+              className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-[10px] font-semibold uppercase transition-colors"
+              style={{ color: "var(--text-muted)", letterSpacing: "0.14em", fontFamily: "var(--font-code)" }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--text-muted)"; }}
+              aria-expanded={showArchived}
+            >
+              <span>Archived · {archivedMissions.length}</span>
+              <svg
+                width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                style={{ transform: showArchived ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}
+                aria-hidden="true"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+            {showArchived && archivedMissions.map((mission) => (
+              <MissionHistoryItem
+                key={mission.id}
+                mission={mission}
+                busy={busy}
+                archived
+                onSelect={selectMission}
+                onShare={shareMission}
+                onArchive={archiveMission}
+                onDelete={removeMission}
+                relativeTime={relativeTime}
+              />
+            ))}
+          </div>
         )}
       </div>
 
