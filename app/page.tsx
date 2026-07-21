@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { CommandInputBar } from "@/components/panels/CommandInputBar";
 import { ConnectorsDialog } from "@/components/panels/ConnectorsDialog";
@@ -18,6 +18,14 @@ import { useCommanderStore, type CommanderStatus } from "@/lib/store";
 
 const inFlight: CommanderStatus[] = ["thinking", "dispatching", "delegating", "monitoring", "synthesizing"];
 
+function relativeTime(ts: number): string {
+  const diff = Date.now() - ts;
+  if (diff < 60_000) return "just now";
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+  return `${Math.floor(diff / 86_400_000)}d ago`;
+}
+
 export default function Home() {
   const commanderName = useCommanderStore((state) => state.name);
   const setCommanderName = useCommanderStore((state) => state.setCommanderName);
@@ -33,6 +41,17 @@ export default function Home() {
   const mobileNavRef = useRef<HTMLElement | null>(null);
   const mobileNavCloseRef = useRef<HTMLButtonElement | null>(null);
   const busy = inFlight.includes(status);
+  const [elapsedSec, setElapsedSec] = useState(0);
+
+  // Live elapsed-time ticker — starts when mission goes in-flight, resets on completion
+  useEffect(() => {
+    if (!busy) { setElapsedSec(0); return; }
+    setElapsedSec(0);
+    const interval = setInterval(() => setElapsedSec((s) => s + 1), 1000);
+    return () => clearInterval(interval);
+  }, [busy]);
+
+  const formatElapsed = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
   // Check connectors status periodically or on mount/dialog close
   const checkConnectors = useCallback(() => {
@@ -188,7 +207,7 @@ export default function Home() {
               disabled={busy}
               onClick={() => selectMission(mission.id)}
               title={mission.missionText}
-              className="w-full truncate rounded-lg px-3 py-2 text-left text-[13px] transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-40"
+              className="w-full rounded-lg px-3 py-2 text-left transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-40"
               style={{ color: "var(--text-secondary)" }}
               onMouseEnter={(e) => {
                 (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.05)";
@@ -199,7 +218,24 @@ export default function Home() {
                 (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)";
               }}
             >
-              {mission.missionText}
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{
+                    background: mission.status === "complete" ? "var(--accent)"
+                              : mission.status === "error" ? "#ff8a65"
+                              : "var(--text-muted)",
+                  }}
+                  aria-hidden="true"
+                />
+                <span className="flex-1 truncate text-[13px]">{mission.missionText}</span>
+              </span>
+              <span
+                className="mt-0.5 block pl-3 text-[10px]"
+                style={{ color: "var(--text-muted)", fontFamily: "var(--font-code)" }}
+              >
+                {relativeTime(mission.createdAt)}
+              </span>
             </button>
           ))
         ) : (
@@ -316,10 +352,21 @@ export default function Home() {
               </p>
               {objective && (
                 <p
-                  className="hidden truncate text-[10px] sm:block"
-                  style={{ color: "var(--text-muted)", fontFamily: "var(--font-code)", letterSpacing: "0.06em" }}
+                  className="hidden truncate text-[10px] sm:flex items-center gap-1.5"
+                  style={{ color: busy ? "var(--accent)" : "var(--text-muted)", fontFamily: "var(--font-code)", letterSpacing: "0.06em" }}
                 >
-                  STATUS: {status.toUpperCase()}
+                  {busy ? (
+                    <>
+                      <span
+                        className="h-1.5 w-1.5 rounded-full shrink-0"
+                        style={{ background: "var(--accent)", boxShadow: "0 0 6px var(--accent)", animation: "pulse-dot 1.4s ease-in-out infinite" }}
+                        aria-hidden="true"
+                      />
+                      {status.toUpperCase()} · {formatElapsed(elapsedSec)}
+                    </>
+                  ) : (
+                    <>STATUS: {status.toUpperCase()}</>
+                  )}
                 </p>
               )}
             </div>

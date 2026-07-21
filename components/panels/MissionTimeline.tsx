@@ -88,7 +88,6 @@ export function MissionTimeline() {
         {PHASES.map((phase, i) => {
           const isCompleted = isDone ? true : (activePhaseIndex > i);
           const isCurrent = activePhaseIndex === i && !isDone && !isError && !isCancelled;
-          const isPending = !isCompleted && !isCurrent;
 
           return (
             <div key={phase.id} className="flex items-start gap-0 min-w-0">
