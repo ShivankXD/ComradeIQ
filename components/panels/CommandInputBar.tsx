@@ -35,6 +35,8 @@ export function CommandInputBar() {
   const busy = inFlight.includes(status);
   const seedPrompt = useCommanderStore((state) => state.seedPrompt);
   const setSeedPrompt = useCommanderStore((state) => state.setSeedPrompt);
+  const autoRunPrompt = useCommanderStore((state) => state.autoRunPrompt);
+  const setAutoRunPrompt = useCommanderStore((state) => state.setAutoRunPrompt);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Consume seed prompt from welcome chips — populate draft and focus
@@ -44,6 +46,17 @@ export function CommandInputBar() {
     setSeedPrompt(undefined);
     setTimeout(() => textareaRef.current?.focus(), 60);
   }, [seedPrompt, setSeedPrompt]);
+
+  // One-click live demo: auto-submit a representative mission exactly once.
+  useEffect(() => {
+    if (!autoRunPrompt || busy) return;
+    const prompt = autoRunPrompt;
+    setAutoRunPrompt(undefined);
+    setDraft(prompt);
+    // Defer so the store reset/render settles before launching the mission.
+    setTimeout(() => void executeLaunch(prompt, "camo"), 120);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRunPrompt, busy]);
 
   function addAttachments(files: FileList | File[]) {
     const incoming = Array.from(files);

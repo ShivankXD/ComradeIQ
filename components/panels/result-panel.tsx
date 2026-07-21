@@ -87,7 +87,11 @@ export function ResultPanel() {
   const presentationUrl = useCommanderStore((state) => state.presentationUrl);
   const sources = useCommanderStore((state) => state.sources);
   const artifacts = useCommanderStore((state) => state.artifacts);
+  const missionId = useCommanderStore((state) => state.missionId);
+  const status = useCommanderStore((state) => state.status);
+  const replayMissionId = useCommanderStore((state) => state.replayMissionId);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+  const [shareState, setShareState] = useState<"idle" | "copied">("idle");
   const [downloadState, setDownloadState] = useState<DownloadState>({ phase: "idle" });
   const [enabledConnectors, setEnabledConnectors] = useState<Record<string, boolean>>({});
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
@@ -130,6 +134,28 @@ export function ResultPanel() {
 
   const parsedSlides = parsedSlidesData?.slides ?? null;
   const slideTheme = parsedSlidesData?.theme ?? "camo";
+
+  // Provider-supplied provenance is only available on hosted web-search runs.
+  // For every other run, surface any citations the model included inline so the
+  // Sources panel stays useful across providers (e.g. Groq/OpenAI-compatible).
+  const displaySources = useMemo(() => {
+    const seen = new Map<string, { title: string; url: string }>();
+    for (const source of sources) if (source.url && !seen.has(source.url)) seen.set(source.url, source);
+    if (result && !parsedSlides) {
+      const markdownLink = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+      for (const match of result.matchAll(markdownLink)) {
+        const url = match[2];
+        if (!seen.has(url)) seen.set(url, { title: match[1].trim().slice(0, 280) || url, url });
+      }
+      const bareUrl = /\bhttps?:\/\/[^\s<>()[\]"']+/g;
+      for (const match of result.matchAll(bareUrl)) {
+        const url = match[0].replace(/[.,;]+$/, "");
+        // Markdown-link URLs are already captured above; the map dedups the rest.
+        if (!seen.has(url)) seen.set(url, { title: url.replace(/^https?:\/\//, "").slice(0, 80), url });
+      }
+    }
+    return [...seen.values()].slice(0, 12);
+  }, [sources, result, parsedSlides]);
 
   interface Slide {
     title: string;
@@ -200,6 +226,20 @@ export function ResultPanel() {
       setCopyState("failed");
     }
     window.setTimeout(() => setCopyState("idle"), 1800);
+  }
+
+  const shareId = missionId ?? replayMissionId;
+  const canShare = Boolean(shareId) && status === "complete";
+  async function share() {
+    if (!shareId) return;
+    const link = `${window.location.origin}/m/${shareId}`;
+    try {
+      await copyWithFallback(link);
+      setShareState("copied");
+    } catch {
+      /* Clipboard unavailable; the link is still valid if the user copies it manually. */
+    }
+    window.setTimeout(() => setShareState("idle"), 2200);
   }
 
   async function downloadArtifact(artifact: Pick<MissionArtifact, "id" | "filename" | "contentType" | "url">) {
@@ -288,6 +328,38 @@ export function ResultPanel() {
 
         {/* Action buttons */}
         <div className="flex flex-wrap gap-2">
+          {canShare && (
+            <button
+              type="button"
+              onClick={() => void share()}
+              data-testid="share-result"
+              title="Copy a public read-only link to this result"
+              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all duration-150"
+              style={{
+                border: `1px solid ${shareState === "copied" ? "rgba(0,229,160,0.35)" : "var(--border-mid)"}`,
+                color: shareState === "copied" ? "var(--accent)" : "var(--text-secondary)",
+                background: shareState === "copied" ? "rgba(0,229,160,0.06)" : "transparent",
+              }}
+              onMouseEnter={(e) => {
+                if (shareState === "idle") {
+                  (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)";
+                  (e.currentTarget as HTMLButtonElement).style.color = "var(--text-primary)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (shareState === "idle") {
+                  (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                  (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)";
+                }
+              }}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+                <line x1="8.6" y1="13.5" x2="15.4" y2="17.5" /><line x1="15.4" y1="6.5" x2="8.6" y2="10.5" />
+              </svg>
+              {shareState === "copied" ? "Link copied" : "Share"}
+            </button>
+          )}
           {result && (
             <button
               type="button"
@@ -632,7 +704,7 @@ export function ResultPanel() {
       )}
 
       {/* Sources */}
-      {sources.length > 0 && (
+      {displaySources.length > 0 && (
         <section
           className="mt-5 pt-4"
           aria-label="Research sources"
@@ -643,14 +715,14 @@ export function ResultPanel() {
               className="text-[9px] font-semibold uppercase"
               style={{ color: "var(--text-muted)", letterSpacing: "0.18em", fontFamily: "var(--font-code)" }}
             >
-              Sources
+              Sources <span style={{ color: "var(--accent)" }}>· {displaySources.length}</span>
             </p>
             <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-              Web research provenance
+              Cited references
             </span>
           </div>
           <ul className="mt-2 grid gap-2 sm:grid-cols-2">
-            {sources.map((source, index) => {
+            {displaySources.map((source, index) => {
               const url = safeExternalUrl(source.url);
               return url ? (
                 <li key={`${source.url}-${index}`}>

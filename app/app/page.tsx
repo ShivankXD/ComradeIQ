@@ -42,6 +42,18 @@ export default function Home() {
   const mobileNavCloseRef = useRef<HTMLButtonElement | null>(null);
   const busy = inFlight.includes(status);
   const [elapsedSec, setElapsedSec] = useState(0);
+  const setAutoRunPrompt = useCommanderStore((state) => state.setAutoRunPrompt);
+
+  // One-click live demo: when arriving from the landing page with ?demo=1,
+  // auto-launch a representative mission so judges see the full pipeline instantly.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("demo") !== "1") return;
+    setAutoRunPrompt("Give a concise 3-paragraph briefing on how a multi-agent AI system coordinates specialists — researcher, writer, critic — to deliver a more reliable result than a single model.");
+    // Clear the flag from the URL so a refresh doesn't relaunch the demo.
+    window.history.replaceState(null, "", "/app");
+  }, [setAutoRunPrompt]);
 
   // Live elapsed-time ticker — starts when mission goes in-flight, resets on completion
   useEffect(() => {

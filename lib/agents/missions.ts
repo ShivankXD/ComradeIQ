@@ -216,6 +216,17 @@ export async function getOwnedMissionSnapshot(id: string, ownerSessionId: string
   return asPublicSnapshot(record);
 }
 
+/**
+ * Sanitized, ownership-free snapshot for shareable read-only permalinks.
+ * Only completed missions are shareable, and the snapshot already excludes the
+ * owner session, raw input, and attachment contents.
+ */
+export async function getShareableMissionSnapshot(id: string): Promise<PublicMissionSnapshot | undefined> {
+  const record = await getMission(id);
+  if (!record || record.status !== "complete") return undefined;
+  return asPublicSnapshot(record);
+}
+
 export async function updateMission(
   id: string,
   mutate: (record: MissionRecord) => void | Promise<void>,

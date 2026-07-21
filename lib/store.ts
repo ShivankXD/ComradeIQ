@@ -72,6 +72,8 @@ export interface CommanderState {
   runtimeMode: "live" | "unavailable" | "unknown";
   /** Prompt text injected by welcome-state seed chips; consumed once by CommandInputBar. */
   seedPrompt?: string;
+  /** Prompt injected by the one-click live demo; CommandInputBar submits it automatically once. */
+  autoRunPrompt?: string;
 }
 
 interface CommanderActions {
@@ -102,6 +104,7 @@ interface CommanderActions {
   addChatTurn: (turn: ChatTurn) => void;
   clearChatHistory: () => void;
   setSeedPrompt: (prompt: string | undefined) => void;
+  setAutoRunPrompt: (prompt: string | undefined) => void;
   resetMissionView: () => void;
   reset: () => void;
 }
@@ -225,6 +228,7 @@ export const useCommanderStore = create<CommanderStore>((set) => ({
   })),
   clearChatHistory: () => set({ chatHistory: [] }),
   setSeedPrompt: (seedPrompt) => set({ seedPrompt }),
+  setAutoRunPrompt: (autoRunPrompt) => set({ autoRunPrompt }),
   // Clears everything a mission draws on the canvas, without touching the
   // Comrade connect/disconnect topology the user has set up.
   resetMissionView: () => set((state) => ({

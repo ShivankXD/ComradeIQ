@@ -273,6 +273,27 @@ export default function LandingPage() {
                 <path d="M5 12h14M12 5l7 7-7 7" />
               </svg>
             </Link>
+            <Link
+              href="/app?demo=1"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                background: "rgba(0,229,160,0.06)",
+                border: "1px solid rgba(0,229,160,0.28)",
+                color: "#00e5a0",
+                fontWeight: 700,
+                fontSize: 15,
+                padding: "13px 28px",
+                borderRadius: 12,
+                textDecoration: "none",
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+              Watch live demo
+            </Link>
             <a
               href="https://github.com/ShivankXD/ComradeIQ"
               target="_blank"
