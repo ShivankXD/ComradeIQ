@@ -1,182 +1,153 @@
+<div align="center">
+
 # ComradeIQ
 
-> A conversation-first AI mission control that turns a request into a verified, downloadable result.
+### One prompt. A whole AI team. A finished, verified deliverable.
 
-ComradeIQ is a premium, calm chat workspace for missions that need more than a single completion. It keeps the conversation as the primary surface and moves Commander/Comrade coordination into an optional Team Controls view. There are no simulated answers, placeholder research, or pretend artifacts: when a capability is not configured, the product says so clearly.
+**ComradeIQ is an AI mission control.** You give Commander Atlas an objective, and a coordinated team of specialists (Researcher, Writer, Critic, Formatter, Assembler) works through a real dependency pipeline to hand you back a downloadable result, while you watch every step happen live.
+
+[![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19-149eca?logo=react)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Groq](https://img.shields.io/badge/LLM-llama--3.3--70b-f55036)](https://groq.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-00c487.svg)](LICENSE)
+
+**[Live app](https://comradeiq.vercel.app)** · [Landing page](https://comradeiq.vercel.app) · [Devpost story](DEVPOST.md)
 
 ![ComradeIQ desktop workspace](docs/screenshots/desktop.png)
 
-<img src="docs/screenshots/mobile.png" alt="ComradeIQ mobile workspace" width="280" />
+</div>
 
-## The problem
+---
 
-AI workspaces often make collaboration look impressive without making the output dependable. A wall of agent activity can obscure the answer, disguise invented progress, and leave users unsure which files, sources, or results are real.
+## Why ComradeIQ
 
-## The solution
+Most "multi-agent" AI demos are theater: spinning cards that invent their own progress, phantom parallel calls, and confident answers with no traceable source. ComradeIQ takes the opposite stance. Every visible update traces to a real event, every artifact to real storage, and every error is an honest error. When a capability is not configured, the product says so plainly instead of faking it.
 
-ComradeIQ routes each mission through a capability-aware workflow:
+## What it does
 
-- Casual conversation gets a fast, direct server-side OpenAI response.
-- README, Markdown, code, and document work uses an artifact workflow that can create a downloadable Markdown file.
-- Presentation requests use a structured deck workflow that generates a downloadable PPTX.
-- Web research is strictly opt-in and returns source links and provenance.
-- Work that benefits from specialists runs through a genuine dependency DAG: Commander plan → Researcher + Writer (when relevant) → Formatter + Critic with upstream output → Assembler → Commander QA.
+Give one objective and ComradeIQ routes it to the right workflow automatically:
 
-Progress is streamed with SSE by default and stored with each mission. Ably can enhance a configured deployment, but it is never required for progress to appear.
+| Mode | You get |
+| --- | --- |
+| **Direct chat** | A fast, single answer with no unnecessary overhead |
+| **Document** | A downloadable **Markdown** file (README, spec, report, docs) |
+| **Presentation** | A downloadable **PPTX** deck in one of 4 themes (Camo, Cyberpunk, Minimal, Ocean) |
+| **Research** | A **sourced, cited** answer with real links (opt-in web access) |
 
-## Product principles
+For work that needs coordination, the Commander builds and executes a real **dependency DAG**:
 
-- **Truthful by default.** No key means no invented answer. Missing object storage means no claim of deployment-safe downloads.
-- **Chat first.** The team visualization is compact in the workspace and full controls are opt-in.
-- **Safe operations.** Keys stay server-side; requests, files, artifact access, retries, and optional realtime tokens are owner-scoped.
-- **Useful coordination.** Only needed Comrades activate. The Commander connects to Comrades, never Comrade-to-Comrade links.
-- **Accessible controls.** Dialogs manage focus and close with Escape; status updates are announced; maps have keyboard alternatives.
+```
+Researcher --> Writer --> Formatter --> Critic --> Assembler --> Commander QA
+```
 
-## Architecture
+Each specialist waits for its actual upstream output, and each role sees only its own inputs (no shared transcript).
 
-The browser only receives owner-scoped mission and artifact URLs. Provider credentials, storage credentials, validation, moderation, orchestration, and durable event persistence remain on the server.
+## Signature features
+
+- **Live agent graph.** A dependency-DAG visualization where every specialist node lights up in real time (thinking, working, done) and edges pulse as work flows downstream.
+- **Live agent console.** A terminal-style ops log streaming the real orchestration events (`dispatch --agent writer`, `[critic] working`, `mission complete`). Each line expands to reveal that agent's actual contribution.
+- **Full five-agent pipeline.** Document and slide missions run the whole team, visible end to end.
+- **Play chess with the Commander.** Say "play chess with me" and a rules-validated board opens in chat. You play White; Commander Atlas plays Black through the same model that runs missions.
+- **In-chat video.** Ask for "a video of how jet engines work" and ComradeIQ searches YouTube and embeds a playable player inline.
+- **Shareable permalinks.** Completed missions get a read-only `/m/<id>` link anyone can open, no account required.
+- **Chat management.** A hover menu on every conversation to share, archive, or delete it.
+- **One-click demo.** A "Watch live demo" button auto-runs a representative mission so a first-time visitor sees the full pipeline in seconds.
+
+## How it works
+
+The browser only ever receives owner-scoped mission and artifact URLs. Provider credentials, storage, validation, orchestration, and durable event persistence all stay on the server.
 
 ```mermaid
 flowchart LR
     client["Browser chat workspace"] -->|"HTTPS"| api["Next.js API routes"]
-    api -->|"starts and controls"| mission["Mission orchestration service"]
+    api -->|"starts and controls"| mission["Mission orchestrator (real DAG)"]
     api -->|"SSE"| progress["Mission event stream"]
-    mission -->|"records state"| persistence["Mission event persistence"]
-    mission -->|"server-only calls"| openai["OpenAI Responses API"]
+    mission -->|"records state"| persistence["Mission + event persistence"]
+    mission -->|"server-only calls"| llm["OpenAI-compatible provider (Groq)"]
     mission -->|"private artifacts"| storage["Vercel Blob adapter"]
-    mission -.->|"optional enhancement"| ably["Ably"]
-    progress -->|"safe activity and result events"| client
+    progress -->|"safe activity + result events"| client
 ```
 
-See [the detailed architecture](docs/architecture.md) and the [editable FigJam diagram](https://www.figma.com/board/7lwbfDvH9frZmpRESkTa6X?utm_source=other&utm_content=edit_in_figjam&oai_id=v1%2Fp5HYVp1JRBa4T7KD9ulK7OBhsccSgYdyMQsoGuF1PcIiWFIp1NKKPt&request_id=a3388193-4a39-4250-b6fa-a25772c03ee9&architecture=true).
+See the [detailed architecture](docs/architecture.md) for the full breakdown.
 
-## Stack
+## Tech stack
 
-- Next.js 15, React 19, TypeScript, Tailwind CSS, Zustand, and Framer Motion
-- OpenAI Responses API with a configurable [`gpt-5.6-terra`](https://developers.openai.com/api/docs/models/gpt-5.6-terra) default model
-- Server-Sent Events, with optional Ably subscriptions
-- Vercel Blob private storage adapter for durable mission records and artifact bytes
-- PptxGenJS for deck generation; PDF extraction for supported uploads
-- Vitest, Playwright, ESLint, and GitHub Actions
+- **Next.js 15, React 19, TypeScript, Tailwind CSS** for a responsive, type-safe chat workspace
+- **Any OpenAI-compatible provider** for server-only model calls; the live deployment runs **Groq `llama-3.3-70b`**
+- **Server-Sent Events** for live progress, with optional Ably as a progressive enhancement
+- **Vercel Blob** private storage for durable mission records and artifact bytes
+- **PptxGenJS** for server-side decks, **chess.js** for a legality-validated board with an LLM opponent, and a keyless **YouTube search + embed** for in-chat video
+- **Zustand** for client state, **Vitest + Playwright** for unit, DAG, state, accessibility, and reconnect coverage
+
+## Routes
+
+| Route | Purpose |
+| --- | --- |
+| `/` | Marketing landing page (shown first) |
+| `/app` | The ComradeIQ mission-control tool |
+| `/m/[missionId]` | Public, read-only shared mission result |
 
 ## Quick start
 
-### Prerequisites
+**Prerequisites:** Node.js 22.13+ and npm, plus an API key for any OpenAI-compatible provider (a Groq `gsk_...` key works out of the box).
 
-- Node.js **22.13+** and npm
-- An OpenAI API key for live AI behavior
-- A private Vercel Blob store for deployment-safe mission persistence and downloads
-
-```powershell
+```bash
 git clone https://github.com/ShivankXD/ComradeIQ.git
-cd ComradeIQ/comradeiq
+cd ComradeIQ
 npm ci
-Copy-Item .env.example .env.local
+cp .env.example .env.local   # then add your key
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Without `OPENAI_API_KEY`, ComradeIQ displays an honest setup state. It does not emulate a provider response.
+Open [http://localhost:3000](http://localhost:3000). Without a key, ComradeIQ shows an honest setup state instead of faking a response.
 
-## Environment variables
+### Minimal configuration
 
-Copy `.env.example` to `.env.local`. Do not commit `.env.local` or any credential.
+A single key is enough to run live. A `gsk_...` key is auto-detected and configured for Groq:
 
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `OPENAI_API_KEY` | For live AI | Read only on the server; enables model calls and moderation. |
-| `OPENAI_BASE_URL` | No | Server-only endpoint for an OpenAI-compatible provider; defaults to the official OpenAI API. |
-| `OPENAI_API_MODE` | No | `responses` by default. Set `chat-completions` only for a provider that documents the Chat Completions protocol. |
-| `OPENAI_MODEL` | No | Main model ID for the selected provider API mode. Defaults to `gpt-5.6-terra`. |
-| `OPENAI_VISION_MODEL` | No | Explicit vision-capable model used for supported image input. |
-| `BLOB_READ_WRITE_TOKEN` | Production | Credentials for a **private** Vercel Blob store. Enables durable mission/event/artifact persistence. |
-| `ABLY_API_KEY` | No | Optional best-effort realtime enhancement. SSE remains the default. |
-| `COMRADEIQ_MISSION_TIMEOUT_SECONDS` | No | Per-mission timeout, 10–300 seconds (default 55). |
-| `COMRADEIQ_MAX_CONCURRENT_MISSIONS` | No | Instance-wide mission concurrency, 1–20 (default 3). |
-| `COMRADEIQ_MAX_MISSIONS_PER_MINUTE` | No | Per-session start rate, 1–60 (default 6). |
-| `COMRADEIQ_MAX_ATTACHMENTS` | No | Upload count limit, 0–5 (default 3). |
-| `COMRADEIQ_MAX_ATTACHMENT_BYTES` | No | Per-attachment limit, 64 KiB–8 MiB (default 4 MiB). |
-| `COMRADEIQ_DISABLE_MODERATION` | No | Set `true` only when an approved deployment policy requires moderation to be disabled. |
+```env
+OPENAI_API_KEY=gsk_your_key_here
+```
 
-`VERCEL_OIDC_TOKEN` and `BLOB_STORE_ID` are also supported when Vercel provides workload identity for the private Blob store.
+Full options are documented in [`.env.example`](.env.example). Deployment guidance (including the Vercel Blob store that makes replies and downloads durable across serverless instances) is in [VERCEL_SETUP.md](VERCEL_SETUP.md).
 
-For a third-party Chat Completions gateway, set `OPENAI_BASE_URL`, `OPENAI_API_MODE=chat-completions`, and the gateway's exact model ID. Hosted OpenAI web search, source provenance, and OpenAI moderation are intentionally disabled in that mode unless separately implemented by the provider; ComradeIQ never claims those capabilities are available through a generic compatibility layer.
+## Project structure
 
-## Deployment
+```
+app/            Landing page, /app tool, /m share page, API routes
+components/     Chat workspace, agent graph, agent console, chess, video, panels
+lib/            Orchestrator, DAG, provider client, intent routing, storage, store
+docs/           Architecture, testing, screenshots
+tests/          Vitest unit + Playwright e2e
+```
 
-1. Create a private Vercel Blob store and connect it to the deployment.
-2. Add the environment variables above in the deployment provider’s server environment; never prefix secrets with `NEXT_PUBLIC_`.
-3. Deploy with Node 22.13+.
-4. Visit `/api/health/ai` to verify the safe configuration summary. It reveals provider and capability status, never keys.
-5. Exercise the demo flow below and verify a downloaded PPTX opens after a fresh deployment instance.
+## Verify and build
 
-If private Blob storage is absent, ComradeIQ remains useful for local development with instance-memory state, but declares that state and artifacts are non-durable. It does not claim production-ready artifact storage.
-
-## Supported inputs and outputs
-
-| Capability | Supported behavior |
-| --- | --- |
-| Text, Markdown, JSON, CSV | Server-side validation and bounded text extraction |
-| PDF | Server-side text extraction when readable |
-| Images | Sent as image input only when a vision-capable model is configured |
-| Audio / video / unknown media | Explicitly labelled unsupported; never claimed as analyzed |
-| Web research | Only when the user turns it on; source links and provenance are returned |
-| Markdown | Safely rendered GFM-style headings, lists, links, code blocks, tables, citations, copy action, and Markdown download |
-| PPTX | Structured deck generation and owner-scoped download URL; durable with private Blob storage |
-
-## Privacy and security
-
-- OpenAI, Ably, and Blob credentials are server-only.
-- An HTTP-only anonymous session cookie owns missions, events, retries, cancellation, artifacts, and short-lived Ably subscriptions.
-- State-changing browser requests require same-origin checks.
-- The API applies input validation, MIME/size limits, request limits, concurrency controls, timeouts, cancellation, error classification, and basic moderation.
-- Display-safe mission activity never exposes hidden model reasoning or raw provider errors.
-- Artifact retrieval is checked against mission ownership instead of trusting a guessed file name.
-
-## Verification
-
-```powershell
+```bash
 npm run lint
 npm run test
 npm run build
-npm audit --omit=dev
 ```
 
-For browser coverage:
+Browser coverage:
 
-```powershell
+```bash
 npx playwright install chromium
 npm run test:e2e
 ```
 
-The default browser suite verifies no-key onboarding, disconnect/reconnect, and mobile layout. Real greeting, README, web-research, presentation, and download checks are opt-in because they use a real server-side provider key and can incur cost:
+## Privacy and security
 
-```powershell
-$env:COMRADEIQ_E2E_LIVE = "1"
-$env:OPENAI_API_KEY = "your-server-side-key"
-npm run test:e2e
-```
-
-See [testing details](docs/testing.md).
-
-## Demo flow
-
-1. Start without a key to demonstrate the truthful provider setup state.
-2. Configure a server-side `OPENAI_API_KEY`, ask `hi`, and show the direct response.
-3. Attach a Markdown file and request a README; show progress, rendered output, and **Download .md**.
-4. Enable internet research and show sourced links.
-5. Request a short presentation, download the PPTX, and open it.
-6. Open Team Controls, disconnect/reconnect a Comrade from the keyboard, close with Escape, and show the mobile layout.
-
-The timed narration is in [DEMO_SCRIPT.md](DEMO_SCRIPT.md); Devpost-ready copy is in [DEVPOST.md](DEVPOST.md).
-
-## Limitations
-
-- An anonymous session is a practical single-browser ownership boundary, not a collaborative account system.
-- In-memory persistence is intentionally development-only and is lost on restart or across instances.
-- Retry and cancellation use attempt fencing to prevent stale completions from being surfaced, but rate and concurrency limits are currently instance-local. High-volume multi-instance deployments should add a shared queue or distributed lease.
-- Image analysis depends on a configured vision-capable model. Audio and video are unsupported.
-- Real model output can be imperfect; ComradeIQ reports operational errors and sources, but users remain responsible for reviewing consequential artifacts.
+- Provider, Ably, and Blob credentials are server-only and never exposed to the browser.
+- An HTTP-only anonymous session cookie owns missions, events, retries, cancellation, and artifacts.
+- State-changing requests require same-origin checks; artifact access is validated against mission ownership.
+- The API applies input validation, MIME and size limits, rate and concurrency limits, timeouts, cancellation, and basic moderation.
 
 ## License
 
 Released under the [MIT License](LICENSE).
+
+<div align="center">
+<sub>ComradeIQ · Built for DevPost Hackathon 2026</sub>
+</div>

@@ -19,7 +19,7 @@ const features = [
       </svg>
     ),
     title: "Write",
-    description: "Narrative Writer crafts structured artifacts — reports, READMEs, and documents — from a single brief.",
+    description: "Narrative Writer crafts structured artifacts (reports, READMEs, and documents) from a single brief.",
   },
   {
     icon: (
@@ -38,7 +38,7 @@ const features = [
       </svg>
     ),
     title: "Coordinate",
-    description: "Multi-agent architecture — Commander orchestrates Researcher, Writer, Critic, Formatter, and Assembler simultaneously.",
+    description: "Multi-agent architecture: Commander orchestrates Researcher, Writer, Critic, Formatter, and Assembler simultaneously.",
   },
   {
     icon: (
@@ -47,7 +47,7 @@ const features = [
       </svg>
     ),
     title: "Monitor",
-    description: "Real-time mission timeline shows every step — planning, dispatching, execution, and synthesis — as it happens.",
+    description: "Real-time mission timeline shows every step (planning, dispatching, execution, and synthesis) as it happens.",
   },
   {
     icon: (
@@ -61,9 +61,9 @@ const features = [
 ];
 
 const steps = [
-  { num: "01", label: "Give a mission", detail: "Type any objective into the command bar — a question, a document brief, or a presentation topic." },
+  { num: "01", label: "Give a mission", detail: "Type any objective into the command bar: a question, a document brief, or a presentation topic." },
   { num: "02", label: "Commander plans",  detail: "The Commander reviews your mission and selects the right specialists for the job." },
-  { num: "03", label: "Team executes",    detail: "Active specialists work in parallel — researching, writing, critiquing, and assembling." },
+  { num: "03", label: "Team executes",    detail: "Active specialists work in parallel, researching, writing, critiquing, and assembling." },
   { num: "04", label: "Result delivered", detail: "A complete artifact is delivered: readable inline, downloadable as Markdown or PPTX." },
 ];
 
@@ -247,7 +247,7 @@ export default function LandingPage() {
             }}
           >
             ComradeIQ is a multi-agent AI command center. One prompt coordinates
-            a team of specialists — Researcher, Writer, Critic, Formatter, and Assembler —
+            a team of specialists (Researcher, Writer, Critic, Formatter, and Assembler)
             to deliver results beyond any single model.
           </p>
 
@@ -616,7 +616,7 @@ export default function LandingPage() {
               C
             </div>
             <span style={{ fontSize: 13, color: "#5a6660", fontWeight: 500 }}>
-              ComradeIQ — Built for DevPost Hackathon 2026
+              ComradeIQ · Built for DevPost Hackathon 2026
             </span>
           </div>
           <div style={{ display: "flex", gap: 20 }}>
